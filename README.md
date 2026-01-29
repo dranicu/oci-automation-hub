@@ -5,23 +5,47 @@
 ## THIS IS A NEW, BLANK REPO THAT IS NOT READY FOR USE YET.  PLEASE CHECK BACK SOON!
 
 ## Introduction
-MISSING
+
+This repository contains a collection of **independent automation sample solutions** intended to demonstrate how Oracle Cloud Infrastructure (OCI) can be used together with open-source and third-party technologies.
+
+The projects in this repository are designed to support:
+- Presales and technical discussions
+- Proof of Concept (POC) activities
+- Architecture and automation demonstrations
+- Exploration of OCI capabilities in real-world scenarios
+
+Each automation sample is self-contained and documented separately.
+
+---
 
 ## Getting Started
-MISSING
+
+This repository contains multiple **independent automation sample solutions**, each located in its own directory.
+
+After cloning the repository:
+1. Choose the automation sample you are interested in
+2. Navigate to its directory
+3. Follow the instructions provided in that project’s `README.md`
+
+All setup details, prerequisites, and usage instructions are documented **per solution**.
 
 ### Prerequisites
-MISSING
+
+Prerequisites depend on the selected automation sample.
+
+Please refer to the `README.md` of each individual project directory for detailed requirements and setup instructions.
 
 ## Notes/Issues
-MISSING
+
+- The content in this repository is intended for demonstration and evaluation purposes.
+- The automation samples are not production-ready and may change over time.
+- If you encounter issues or have suggestions, please open an issue in this repository.
 
 ## URLs
-* Nothing at this time
+
+* Additional documentation and references may be added as individual automation samples are published.
 
 ## Contributing
-<!-- If your project has specific contribution requirements, update the
-    CONTRIBUTING.md file to ensure those requirements are clearly explained. -->
 
 This project welcomes contributions from the community. Before submitting a pull
 request, please [review our contribution guide](./CONTRIBUTING.md).
