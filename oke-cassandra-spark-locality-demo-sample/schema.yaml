@@ -101,11 +101,11 @@ variables:
     enum:
       - "v1.33.1"
       - "v1.33.0"
-      - "v1.32.1"
+      - "v1.34.1"
     title: "Kubernetes Version"
     description: "Choose the version of Kubernetes to deploy"
     required: true
-    default: "v1.33.1"
+    default: "v1.34.1"
     visible: create_new_oke_cluster
 
   nodepool_image_version:
@@ -123,22 +123,6 @@ variables:
     default: "dl-cluster"
     visible: create_new_oke_cluster
 
-  useExistingVcn:
-    type: boolean
-    title: "Use Existing VCN"
-    description: "Click to use existing VCN, otherwise VCN and Subnets will be created"
-    required: true
-    default: false
-
-  myVcn:
-    type: oci:core:vcn:id
-    title: "Existing VCN"
-    description: "Select Existing VCN"
-    dependsOn:
-      compartmentId: compartment_ocid
-    visible: useExistingVcn
-    required: true
-
   custom_cidrs:
     type: boolean
     title: "Customize Network CIDRs"
@@ -148,26 +132,6 @@ variables:
     visible:
       not:
         - useExistingVcn
-
-  OKESubnet:
-    type: oci:core:subnet:id
-    title: "OKE Subnet"
-    description: "Select Subnet for OKE cluster"
-    dependsOn:
-      compartmentId: compartment_ocid
-      vcnId: myVcn
-    visible: useExistingVcn
-    required: true
-
-  edgeSubnet:
-    type: oci:core:subnet:id
-    title: "Edge Subnet"
-    description: "Select Subnet for Bastion.  If using remote exec, ensure that this is a public subnet or deployment will fail."
-    dependsOn:
-      compartmentId: compartment_ocid
-      vcnId: myVcn
-    visible: useExistingVcn
-    required: true
 
   availability_domain:
     type: oci:identity:availabilitydomain:name

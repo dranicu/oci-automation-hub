@@ -1,5 +1,5 @@
-// Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
-// The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
+# Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
+# The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
 
 # ---------------------------------------------------------------------------------------------------------------------
 # AD Settings. By default uses AD1 
@@ -30,23 +30,6 @@ variable "private_key_path" {
 # ---------------------------------------------------------------------------------------------------------------------
 # Network Settings
 # --------------------------------------------------------------------------------------------------------------------- 
-
-# If you want to use an existing VCN set useExistingVcn = "true" and configure OCID(s) of myVcn, OKESubnet and edgeSubnet
-
-variable "useExistingVcn" {
-  default = "false"
-}
-
-variable "myVcn" {
-  default = " "
-}
-variable "OKESubnet" {
-  default = " "
-}
-variable "edgeSubnet" {
-  default = " "
-}
-
 
 variable "custom_cidrs" {
   default = "false"

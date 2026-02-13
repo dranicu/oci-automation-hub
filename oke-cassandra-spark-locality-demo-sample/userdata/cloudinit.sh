@@ -1,7 +1,7 @@
+#!/bin/bash
+
 # Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
 # The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
-
-#!/bin/bash
 
 set -o pipefail
 LOG_FILE="/var/log/oke-automation.log"
@@ -177,7 +177,7 @@ log "Installing K8ssandra Operator v1.7.1..."
 /usr/local/bin/helm install k8ssandra-operator k8ssandra/k8ssandra-operator \
   --namespace k8ssandra-operator \
   --create-namespace \
-  --version 1.7.1 \
+  --version 1.13.0 \
   --set installCRDs=true >> "$LOG_FILE" 2>&1
 
 log "Waiting for K8ssandra Operator pods to be Running..."
@@ -228,7 +228,7 @@ spec:
               spark-locality: "true"
         storageConfig:
           cassandraDataVolumeClaimSpec:
-            accessModes: [ "ReadWriteOnce" ]
+            accessModes: ["ReadWriteOnce"]
             resources:
               requests:
                 storage: 10Gi
@@ -372,8 +372,8 @@ metadata:
 spec:
   containers:
   - name: master
-    image: bitnami/spark:3.3.2
-    command: ["/opt/bitnami/spark/bin/spark-class"]
+    image: docker.io/apache/spark:3.5.1
+    command: ["/opt/spark/bin/spark-class"]
     args: ["org.apache.spark.deploy.master.Master"]
     env:
     - name: SPARK_MASTER_PORT
@@ -428,8 +428,8 @@ spec:
           topologyKey: "kubernetes.io/hostname"
   containers:
   - name: spark-worker
-    image: bitnami/spark:3.3.2
-    command: ["/opt/bitnami/spark/bin/spark-class"]
+    image: docker.io/apache/spark:3.5.1
+    command: ["/opt/spark/bin/spark-class"]
     args: ["org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]
     ports:
     - containerPort: 7078
@@ -458,8 +458,8 @@ spec:
         spark-locality: "true"
       containers:
       - name: spark-read
-        image: bitnami/spark:3.3.2-debian-11-r0
-        command: ["/opt/bitnami/spark/bin/spark-submit"]
+        image: docker.io/apache/spark:3.5.1
+        command: ["/opt/spark/bin/spark-submit"]
         args:
           - "--conf"
           - "spark.jars.packages=com.datastax.spark:spark-cassandra-connector_2.12:3.3.0"

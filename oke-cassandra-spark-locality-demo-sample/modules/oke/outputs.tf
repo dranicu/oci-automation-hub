@@ -1,5 +1,5 @@
-// Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
-// The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
+# Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
+# The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
 
 locals {
   cluster_id  = var.create_new_oke_cluster ? oci_containerengine_cluster.oke_dl_cluster[0].id : var.existing_oke_cluster_id

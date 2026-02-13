@@ -1,34 +1,32 @@
-// Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
-// The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
+# Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
+# The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
 
-# ---------------------------------------------------------------------------------------------------------------------
-# Environmental variables
-# You probably want to define these as environmental variables.
-# Instructions on that are here: https://github.com/oci-quickstart/oci-prerequisites
-# ---------------------------------------------------------------------------------------------------------------------
-
-variable "tenancy_ocid" {}
-variable "compartment_ocid" {}
-variable "region" {}
-#variable "oci_service_gateway" {}
-variable "VCN_CIDR" {}
-variable "useExistingVcn" {}
-variable "custom_vcn" {
-  type    = list(string)
-  default = [" "]
+variable "compartment_ocid" {
+  description = "OCID of the compartment where network resources will be created"
+  type        = string
 }
 
-variable "vcn_dns_label" {}
-
-variable "edge_cidr" {}
-variable "private_cidr" {}
-
-variable "myVcn" {}
-variable "OKESubnet" {
-  default = " "
-}
-variable "edgeSubnet" {
-  default = " "
+variable "VCN_CIDR" {
+  description = "CIDR block for the VCN"
+  type        = string
 }
 
-variable "service_port" {}
+variable "vcn_dns_label" {
+  description = "DNS label for the VCN"
+  type        = string
+}
+
+variable "edge_cidr" {
+  description = "CIDR block for the public (edge) subnet"
+  type        = string
+}
+
+variable "private_cidr" {
+  description = "CIDR block for the private subnet"
+  type        = string
+}
+
+variable "service_port" {
+  description = "Application service port exposed on the edge subnet"
+  type        = number
+}

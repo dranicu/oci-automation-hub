@@ -1,5 +1,5 @@
-// Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
-// The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
+# Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
+# The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
 
 resource "oci_containerengine_cluster" "oke_dl_cluster" {
   compartment_id     = var.compartment_ocid

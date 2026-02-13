@@ -1,5 +1,5 @@
-// Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
-// The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
+# Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
+# The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
 
 # Gets a list of Availability Domains
 data "oci_identity_availability_domains" "ads" {
@@ -8,8 +8,6 @@ data "oci_identity_availability_domains" "ads" {
 data "oci_containerengine_node_pool_option" "np_option" {
   node_pool_option_id = var.create_new_oke_cluster ? oci_containerengine_cluster.oke_dl_cluster[0].id : var.existing_oke_cluster_id
 }
-
-
 
 data "template_file" "ol8" {
   count    = var.nodepool_image_version > 7.9 ? 1 : 0
