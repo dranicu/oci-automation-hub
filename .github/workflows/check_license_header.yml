@@ -33,7 +33,7 @@ jobs:
           for FILE in $CHANGED_FILES; do
             # Skip binary files or non-existent files
             if [ ! -f "$FILE" ] || ! file "$FILE" | grep -q text; then
-              echo "⏭️  Skipping (binary/missing): $FILE"
+              echo "Skipping (binary/missing): $FILE"
               continue
             fi
 
@@ -41,9 +41,9 @@ jobs:
             ACTUAL_LINE2=$(sed -n '2p' "$FILE")
 
             if [ "$ACTUAL_LINE1" = "$LINE1" ] && [ "$ACTUAL_LINE2" = "$LINE2" ]; then
-              echo "✅ $FILE"
+              echo "GOOD - $FILE"
             else
-              echo "❌ $FILE — missing or incorrect UPL license header"
+              echo "BAD - $FILE — missing or incorrect UPL license header"
               if [ "$ACTUAL_LINE1" != "$LINE1" ]; then
                 echo "   Expected line 1: $LINE1"
                 echo "   Got line 1:      $ACTUAL_LINE1"
