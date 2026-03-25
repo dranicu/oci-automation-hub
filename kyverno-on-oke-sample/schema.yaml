@@ -154,7 +154,7 @@ variables:
     type: string
     title: Kubernetes version
     description: The version of the Kubernetes cluster.
-    default: v1.32.1
+    default: v1.34.2
     required: true
 
   cni_type:
