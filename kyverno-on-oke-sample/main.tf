@@ -5,6 +5,7 @@ module "oke" {
   source  = "oracle-terraform-modules/oke/oci"
   create_iam_operator_policy = "always"
   create_iam_resources = true
+  allow_short_container_image_names = true
 
 allow_rules_workers = {
     "Allow TCP ingress to workers for SSL traffic from anywhere" : {
