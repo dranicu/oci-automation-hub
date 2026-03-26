@@ -19,8 +19,8 @@ jobs:
       - name: Check UPL license headers
         run: |
           CURRENT_YEAR=$(date +%Y)
-          LINE1="# Copyright (c) 2024, ${CURRENT_YEAR}, Oracle and/or its affiliates. All rights reserved."
-          LINE2="# The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/"
+          LICENSE_TEXT_COPYRIGHT="Copyright (c) 2024, ${CURRENT_YEAR}, Oracle and/or its affiliates. All rights reserved."
+          LICENSE_TEXT_UPL="The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/"
 
           # Get list of changed files in the PR
           CHANGED_FILES=$(git diff --name-only --diff-filter=d origin/${{ github.base_ref }}...HEAD)
@@ -33,9 +33,9 @@ jobs:
           FAILED=0
 
           for FILE in $CHANGED_FILES; do
-            # Skip markdown files
-            if [[ "$FILE" == *.md ]]; then
-              echo "Skipping (markdown): $FILE"
+            # Skip markdown and json files
+            if [[ "$FILE" == *.md ]] || [[ "$FILE" == *.json ]]; then
+              echo "Skipping: $FILE"
               continue
             fi
 
@@ -43,6 +43,30 @@ jobs:
             if [ ! -f "$FILE" ] || ! file "$FILE" | grep -q text; then
               echo "Skipping (binary/missing): $FILE"
               continue
+            fi
+
+            # Determine comment prefix based on file extension
+            case "$FILE" in
+              *.go|*.java)
+                PREFIX="//"
+                ;;
+              *.html)
+                PREFIX="HTML"
+                ;;
+              *.sql)
+                PREFIX="--"
+                ;;
+              *)
+                PREFIX="#"
+                ;;
+            esac
+
+            if [[ "$PREFIX" == "HTML" ]]; then
+              LINE1="<!-- ${LICENSE_TEXT_COPYRIGHT} -->"
+              LINE2="<!-- ${LICENSE_TEXT_UPL} -->"
+            else
+              LINE1="${PREFIX} ${LICENSE_TEXT_COPYRIGHT}"
+              LINE2="${PREFIX} ${LICENSE_TEXT_UPL}"
             fi
 
             if [[ "$FILE" == *.sh ]]; then
