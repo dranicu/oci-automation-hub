@@ -70,10 +70,10 @@ To deploy using OCI Resource Manager, click the button below. This will take you
 
 ## Post-Installation
 
-Once Rook is deployed, you can verify the installation by checking the pods in the `rook-system` namespace:
+Once Rook is deployed, you can verify the installation by checking the pods in the `rook-ceph` namespace:
 
 ```sh
-kubectl get pods -n rook-system
+kubectl get pods -n rook-ceph
 ```
 
 You can now start using Rook's advanced workloads and features. For more information on how to use Rook, refer to the [official Rook documentation](https://rook.io/docs/).

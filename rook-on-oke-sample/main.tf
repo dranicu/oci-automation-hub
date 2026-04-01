@@ -1,13 +1,6 @@
 # Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
 # The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
 
-locals {
-  cloud_init = {
-    content      = file("${path.module}/userdata/cloud-init.sh")
-    content_type = "text/x-shellscript"
-  }
-}
-
 module "oke" {
   source  = "github.com/oracle-terraform-modules/terraform-oci-oke"
   create_iam_operator_policy = "always"
@@ -61,7 +54,6 @@ allow_rules_workers = {
       shape       = lookup(var.simple_np_flex_shape, "instanceShape", "VM.Standard.E3.Flex"),
       ocpus       = lookup(var.simple_np_flex_shape, "ocpus", 4),
       memory      = lookup(var.simple_np_flex_shape, "memory", 32)
-      cloud_init  = [local.cloud_init]
     }
   }
   output_detail = true

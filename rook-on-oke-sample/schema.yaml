@@ -26,7 +26,6 @@ variableGroups:
   - title: "Hidden stack variables"
     visible: false
     variables:
-      - create_iam_resources
       - create_iam_tag_namespace
       - create_iam_defined_tags
       - use_defined_tags
@@ -68,12 +67,18 @@ variableGroups:
       - create_operator
       - ssh_public_key
 
+  - title: "IAM configuration"
+    visible: true
+    variables:
+      - create_iam_resources
+
 variables:
   
   create_iam_resources:
+    title: Create IAM resources
+    description: "Create IAM dynamic groups and policies for the OKE cluster. Disable this if they already exist from a previous deployment."
     type: bool
     default: false
-    visible: true
 
   create_iam_tag_namespace:
     type: bool
