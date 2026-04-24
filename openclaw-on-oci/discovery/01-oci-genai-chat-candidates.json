@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "purpose": "candidate-chat-catalog",
+  "apiKeyOpenAICompatible": {
+    "baseUrlTemplate": "https://inference.generativeai.{region}.oci.oraclecloud.com/20231130/actions/v1",
+    "supportedRegions": [
+      "eu-frankfurt-1",
+      "ap-hyderabad-1",
+      "ap-osaka-1",
+      "us-ashburn-1",
+      "us-chicago-1",
+      "us-phoenix-1"
+    ]
+  },
+  "chatCandidates": {
+    "eu-frankfurt-1": [
+      "meta.llama-3.3-70b-instruct",
+      "meta.llama-3.3-70b-instruct-fp8-dynamic",
+      "openai.gpt-oss-120b",
+      "openai.gpt-oss-20b"
+    ],
+    "ap-hyderabad-1": [],
+    "ap-osaka-1": [
+      "meta.llama-3.3-70b-instruct",
+      "meta.llama-3.3-70b-instruct-fp8-dynamic",
+      "openai.gpt-oss-120b",
+      "openai.gpt-oss-20b"
+    ],
+    "us-ashburn-1": [
+      "openai.gpt-oss-120b",
+      "openai.gpt-oss-20b",
+      "xai.grok-4.20",
+      "xai.grok-code-fast-1",
+      "xai.grok-4.1-fast",
+      "xai.grok-4-fast",
+      "xai.grok-4",
+      "xai.grok-3",
+      "xai.grok-3-mini",
+      "xai.grok-3-fast",
+      "xai.grok-3-mini-fast"
+    ],
+    "us-chicago-1": [
+      "meta.llama-4-maverick",
+      "meta.llama-4-scout",
+      "meta.llama-3.3-70b-instruct",
+      "meta.llama-3.3-70b-instruct-fp8-dynamic",
+      "meta.llama-3.2-90b-vision-instruct",
+      "meta.llama-3.1-405b-instruct",
+      "meta.llama-3.1-70b-instruct",
+      "meta.llama-3-70b-instruct",
+      "openai.gpt-oss-120b",
+      "openai.gpt-oss-20b",
+      "xai.grok-4.20",
+      "xai.grok-code-fast-1",
+      "xai.grok-4.1-fast",
+      "xai.grok-4-fast",
+      "xai.grok-4",
+      "xai.grok-3",
+      "xai.grok-3-mini",
+      "xai.grok-3-fast",
+      "xai.grok-3-mini-fast"
+    ],
+    "us-phoenix-1": [
+      "meta.llama-3.3-70b-instruct-fp8-dynamic",
+      "xai.grok-4.20",
+      "xai.grok-code-fast-1",
+      "xai.grok-4.1-fast",
+      "xai.grok-4-fast",
+      "xai.grok-4",
+      "xai.grok-3",
+      "xai.grok-3-mini",
+      "xai.grok-3-fast",
+      "xai.grok-3-mini-fast"
+    ]
+  }
+}
