@@ -1,0 +1,117 @@
+# Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
+# The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
+
+#cloud-config
+write_files:
+  - path: /opt/openclaw/discovery/01-oci-genai-chat-candidates.json
+    encoding: b64
+    permissions: '0644'
+    owner: root:root
+    content: ${discovery_candidates_json_b64}
+
+  - path: /opt/openclaw/discovery/02-discover-oci-genai-chat-models.py
+    encoding: b64
+    permissions: '0755'
+    owner: root:root
+    content: ${discovery_script_py_b64}
+
+  - path: /opt/openclaw/discovery/03-apply-openclaw-models.py
+    encoding: b64
+    permissions: '0755'
+    owner: root:root
+    content: ${apply_openclaw_models_py_b64}
+
+  - path: /etc/systemd/system/openclaw-model-discovery.service
+    encoding: b64
+    permissions: '0644'
+    owner: root:root
+    content: ${discovery_service_unit_b64}
+
+  - path: /etc/openclaw/oci-genai.env
+    permissions: '0600'
+    owner: root:root
+    content: |
+      OCI_GENAI_API_KEY=${oci_genai_api_key}
+
+runcmd:
+  - mkdir -p /opt/openclaw/discovery
+  - mkdir -p /opt/openclaw/runtime
+  - mkdir -p /etc/openclaw
+  - loginctl enable-linger opc
+  - sudo -u opc bash -lc 'mkdir -p /home/opc/.openclaw /home/opc/.openclaw/workspace /home/opc/.openclaw/agents/main/sessions'
+  - sudo -u opc bash -lc 'chmod 700 /home/opc/.openclaw'
+  - bash -lc 'printf "OCI_GENAI_API_KEY=%s\n" "${oci_genai_api_key}" > /home/opc/.openclaw/.env'
+  - chown opc:opc /home/opc/.openclaw/.env
+  - chmod 600 /home/opc/.openclaw/.env
+  - bash -lc 'grep -qxF "export PATH=/home/opc/.npm-global/bin:\$PATH" /home/opc/.bashrc || echo "export PATH=/home/opc/.npm-global/bin:\$PATH" >> /home/opc/.bashrc'
+  - chown opc:opc /home/opc/.bashrc
+  - bash -lc 'set -euo pipefail; for i in $(seq 1 30); do getent hosts openclaw.ai >/dev/null 2>&1 && exit 0; echo "[openclaw-bootstrap] waiting for DNS for openclaw.ai attempt $i/30"; sleep 5; done; echo "[openclaw-bootstrap] DNS not ready for openclaw.ai" >&2; exit 1'
+  - bash -lc 'set -euo pipefail; for i in $(seq 1 30); do getent hosts yum.us-ashburn-1.oci.oraclecloud.com >/dev/null 2>&1 && exit 0; echo "[openclaw-bootstrap] waiting for DNS for OCI yum endpoint attempt $i/30"; sleep 5; done; echo "[openclaw-bootstrap] DNS not ready for OCI yum endpoint" >&2; exit 1'
+  - bash -lc 'set -euo pipefail; for i in $(seq 1 5); do dnf -y install curl git && exit 0; echo "[openclaw-bootstrap] dnf install curl git failed attempt $i/5"; sleep 10; done; echo "[openclaw-bootstrap] failed to install curl and git after retries" >&2; exit 1'
+  - bash -lc 'set -euo pipefail; rm -f /tmp/openclaw-install.sh; for i in $(seq 1 30); do curl -fsSL https://openclaw.ai/install.sh -o /tmp/openclaw-install.sh && [ -s /tmp/openclaw-install.sh ] && exit 0; echo "[openclaw-bootstrap] installer download failed attempt $i/30"; rm -f /tmp/openclaw-install.sh; sleep 5; done; echo "[openclaw-bootstrap] OpenClaw installer not reachable" >&2; exit 1'
+  - bash -lc 'test -s /tmp/openclaw-install.sh || { echo "[openclaw-bootstrap] /tmp/openclaw-install.sh missing after download step" >&2; exit 1; }'
+  - chmod +x /tmp/openclaw-install.sh
+  - |
+      bash -lc 'set -euo pipefail
+      OPENCLAW_BIN="/home/opc/.npm-global/bin/openclaw"
+      OPENCLAW_LINK="/usr/local/bin/openclaw"
+
+      run_as_opc() {
+        sudo -u opc env XDG_RUNTIME_DIR=/run/user/$(id -u opc) PATH=/home/opc/.npm-global/bin:/usr/local/bin:/usr/bin:/bin bash -lc "$1"
+      }
+
+      install_openclaw() {
+        sudo -u opc bash -lc "/tmp/openclaw-install.sh"
+      }
+
+      for i in $(seq 1 3); do
+        echo "[openclaw-bootstrap] running OpenClaw installer attempt $i/3"
+        if install_openclaw; then
+          if [ -x "$OPENCLAW_BIN" ]; then
+            echo "[openclaw-bootstrap] OpenClaw binary available after installer attempt $i/3"
+            break
+          fi
+        fi
+        echo "[openclaw-bootstrap] installer attempt $i/3 did not produce $OPENCLAW_BIN"
+        if [ "$i" -lt 3 ]; then
+          sleep 15
+        fi
+      done
+
+      test -x "$OPENCLAW_BIN" || { echo "[openclaw-bootstrap] expected OpenClaw binary not found at $OPENCLAW_BIN" >&2; exit 1; }
+
+      if [ -L "$OPENCLAW_LINK" ]; then
+        CURRENT_TARGET="$(readlink "$OPENCLAW_LINK")"
+        if [ "$CURRENT_TARGET" != "$OPENCLAW_BIN" ]; then
+          echo "[openclaw-bootstrap] existing symlink at $OPENCLAW_LINK points to $CURRENT_TARGET instead of $OPENCLAW_BIN" >&2
+          exit 1
+        fi
+      elif [ -e "$OPENCLAW_LINK" ]; then
+        echo "[openclaw-bootstrap] existing file at $OPENCLAW_LINK prevents creating OpenClaw symlink" >&2
+        exit 1
+      else
+        ln -s "$OPENCLAW_BIN" "$OPENCLAW_LINK"
+      fi
+
+      run_as_opc "openclaw config set agents.defaults.workspace /home/opc/.openclaw/workspace"
+      run_as_opc "openclaw config set gateway.bind loopback"
+      run_as_opc "openclaw config set gateway.auth.mode token"
+      run_as_opc "openclaw config set gateway.mode local"
+      run_as_opc "openclaw doctor --generate-gateway-token || true"
+
+      systemctl daemon-reload
+      systemctl enable openclaw-model-discovery.service
+      systemctl start openclaw-model-discovery.service
+
+      for i in $(seq 1 30); do
+        [ -s /opt/openclaw/runtime/03-oci-genai-chat-models.json ] && break
+        echo "[openclaw-bootstrap] waiting for discovery output attempt $i/30"
+        sleep 2
+      done
+
+      test -s /opt/openclaw/runtime/03-oci-genai-chat-models.json || { echo "[openclaw-bootstrap] Discovery output not ready" >&2; exit 1; }
+
+      run_as_opc "/usr/bin/python3 /opt/openclaw/discovery/03-apply-openclaw-models.py /opt/openclaw/runtime/03-oci-genai-chat-models.json $OPENCLAW_BIN"
+      run_as_opc "openclaw gateway install"
+      run_as_opc "openclaw gateway restart"
+      '

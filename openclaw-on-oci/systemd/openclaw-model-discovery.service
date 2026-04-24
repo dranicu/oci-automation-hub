@@ -1,0 +1,23 @@
+# Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
+# The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
+
+[Unit]
+Description=OpenClaw OCI GenAI Chat Model Discovery
+After=network-online.target
+Wants=network-online.target
+Before=openclaw.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/openclaw/oci-genai.env
+ExecStartPre=/bin/mkdir -p /opt/openclaw/runtime
+ExecStartPre=/bin/sleep 20
+ExecStart=/usr/bin/python3 /opt/openclaw/discovery/02-discover-oci-genai-chat-models.py /opt/openclaw/discovery/01-oci-genai-chat-candidates.json /opt/openclaw/runtime/03-oci-genai-chat-models.json
+RemainAfterExit=yes
+Restart=on-failure
+RestartSec=15
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target

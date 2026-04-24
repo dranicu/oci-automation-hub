@@ -1,0 +1,94 @@
+# Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
+# The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
+
+schemaVersion: 1.1.0
+version: "2026.04.05"
+locale: "en"
+groupings:
+  - title: "OpenClaw Deployment"
+    visible: true
+    items:
+      - availability_domain
+      - instance_display_name
+      - instance_shape
+      - image_id
+      - instance_ocpus
+      - instance_memory_gbs
+      - ssh_public_key
+      - oci_genai_api_key
+
+  - title: "Hidden Resource Manager Context"
+    visible: false
+    items:
+      - compartment_ocid
+
+variables:
+  compartment_ocid:
+    type: oci:identity:compartment:id
+    title: "Compartment OCID"
+    description: "Deployment compartment, automatically prepopulated by Resource Manager."
+    visible: false
+    required: true
+
+  availability_domain:
+    type: oci:identity:availabilitydomain:name
+    title: "Availability Domain"
+    description: "Select the availability domain for the compute instance."
+    required: true
+    dependsOn:
+      compartmentId: ${compartment_ocid}
+
+  instance_display_name:
+    type: string
+    title: "Instance Name"
+    description: "Enter the display name for the OpenClaw compute instance."
+    default: "openclaw"
+    required: true
+
+  instance_shape:
+    type: oci:core:instanceshape:name
+    title: "Instance Shape"
+    description: "Select the compute shape for the instance. This choice determines which Oracle Linux 9 images are compatible."
+    required: true
+    dependsOn:
+      compartmentId: ${compartment_ocid}
+      availabilityDomain: ${availability_domain}
+
+  image_id:
+    type: oci:core:image:id
+    title: "Image"
+    description: "Select an Oracle Linux 9 image compatible with the selected shape."
+    required: true
+    dependsOn:
+      compartmentId: ${compartment_ocid}
+      shape: ${instance_shape}
+      operatingSystem: "Oracle Linux"
+      operatingSystemVersion: "9"
+
+  instance_ocpus:
+    type: integer
+    title: "OCPUs"
+    description: "Enter the number of OCPUs for the selected flexible instance shape."
+    default: 2
+    minimum: 1
+    required: true
+
+  instance_memory_gbs:
+    type: integer
+    title: "Memory (GB)"
+    description: "Enter the memory in GB for the selected flexible instance shape. This must be valid for the chosen OCPU count."
+    default: 12
+    minimum: 1
+    required: true
+
+  ssh_public_key:
+    type: oci:core:ssh:publickey
+    title: "SSH Public Key"
+    description: "Provide the public SSH key to be included in the authorized_keys file on the instance."
+    required: true
+
+  oci_genai_api_key:
+    type: password
+    title: "OCI Generative AI API Key"
+    description: "Provide the OCI Generative AI API key used at instance startup to discover working chat-completions models for OpenClaw."
+    required: true
