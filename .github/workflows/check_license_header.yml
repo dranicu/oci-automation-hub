@@ -95,7 +95,7 @@ jobs:
             if [ "$ACTUAL_LINE1" = "$LINE1" ] && [ "$ACTUAL_LINE2" = "$LINE2" ]; then
               echo "GOOD - $FILE"
             else
-              if [[ "$FILE" == *.sh || "$FILE" == *.py ]]; then
+              if [[ "$FILE" == *.sh ]]; then
                 echo "BAD - $FILE — missing or incorrect UPL license header (expected on lines 3-4)"
               else
                 echo "BAD - $FILE — missing or incorrect UPL license header"
