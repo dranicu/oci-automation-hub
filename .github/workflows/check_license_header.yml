@@ -69,6 +69,7 @@ jobs:
               LINE2="${PREFIX} ${LICENSE_TEXT_UPL}"
             fi
 
+            EXPECTED_LINES="1-2"
             if [[ "$FILE" == *.sh ]]; then
               SHEBANG=$(sed -n '1p' "$FILE")
               if [[ "$SHEBANG" != \#!* ]]; then
@@ -78,6 +79,17 @@ jobs:
               fi
               ACTUAL_LINE1=$(sed -n '3p' "$FILE")
               ACTUAL_LINE2=$(sed -n '4p' "$FILE")
+              EXPECTED_LINES="3-4"
+            elif [[ "$FILE" == *.py ]]; then
+              FIRST_LINE=$(sed -n '1p' "$FILE")
+              if [[ "$FIRST_LINE" == \#!* ]]; then
+                ACTUAL_LINE1=$(sed -n '3p' "$FILE")
+                ACTUAL_LINE2=$(sed -n '4p' "$FILE")
+                EXPECTED_LINES="3-4"
+              else
+                ACTUAL_LINE1=$(sed -n '1p' "$FILE")
+                ACTUAL_LINE2=$(sed -n '2p' "$FILE")
+              fi
             else
               ACTUAL_LINE1=$(sed -n '1p' "$FILE")
               ACTUAL_LINE2=$(sed -n '2p' "$FILE")
@@ -86,8 +98,8 @@ jobs:
             if [ "$ACTUAL_LINE1" = "$LINE1" ] && [ "$ACTUAL_LINE2" = "$LINE2" ]; then
               echo "GOOD - $FILE"
             else
-              if [[ "$FILE" == *.sh ]]; then
-                echo "BAD - $FILE — missing or incorrect UPL license header (expected on lines 3-4)"
+              if [[ "$FILE" == *.sh || "$FILE" == *.py ]]; then
+                echo "BAD - $FILE — missing or incorrect UPL license header (expected on lines ${EXPECTED_LINES})"
               else
                 echo "BAD - $FILE — missing or incorrect UPL license header"
               fi
