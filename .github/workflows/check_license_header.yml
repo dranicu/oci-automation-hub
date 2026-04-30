@@ -78,6 +78,15 @@ jobs:
               fi
               ACTUAL_LINE1=$(sed -n '3p' "$FILE")
               ACTUAL_LINE2=$(sed -n '4p' "$FILE")
+            elif [[ "$FILE" == *.py ]]; then
+              FIRST_LINE=$(sed -n '1p' "$FILE")
+              if [[ "$FIRST_LINE" == \#!* ]]; then
+                ACTUAL_LINE1=$(sed -n '3p' "$FILE")
+                ACTUAL_LINE2=$(sed -n '4p' "$FILE")
+              else
+                ACTUAL_LINE1=$(sed -n '1p' "$FILE")
+                ACTUAL_LINE2=$(sed -n '2p' "$FILE")
+              fi
             else
               ACTUAL_LINE1=$(sed -n '1p' "$FILE")
               ACTUAL_LINE2=$(sed -n '2p' "$FILE")
@@ -86,7 +95,7 @@ jobs:
             if [ "$ACTUAL_LINE1" = "$LINE1" ] && [ "$ACTUAL_LINE2" = "$LINE2" ]; then
               echo "GOOD - $FILE"
             else
-              if [[ "$FILE" == *.sh ]]; then
+              if [[ "$FILE" == *.sh || "$FILE" == *.py ]]; then
                 echo "BAD - $FILE — missing or incorrect UPL license header (expected on lines 3-4)"
               else
                 echo "BAD - $FILE — missing or incorrect UPL license header"
