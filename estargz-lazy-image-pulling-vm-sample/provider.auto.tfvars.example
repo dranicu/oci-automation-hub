@@ -1,0 +1,17 @@
+# Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
+# The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
+
+# Copy this file to provider.auto.tfvars and fill in your OCI provider values.
+# Do not commit provider.auto.tfvars.
+
+provider_oci = {
+  tenancy_ocid     = "ocid1.tenancy.oc1..<CHANGE_ME>"
+  user_ocid        = "ocid1.user.oc1..<CHANGE_ME>"
+  fingerprint      = "<CHANGE_ME>"
+  private_key_path = "~/.oci/oci_api_key.pem"
+  region           = "eu-frankfurt-1"
+}
+
+compartment_ids = {
+  sandbox = "ocid1.compartment.oc1..<CHANGE_ME>"
+}
