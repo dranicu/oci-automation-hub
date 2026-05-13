@@ -113,8 +113,21 @@ The following example deploys an `nginx` workload and runs a pod-delete chaos ex
    kubectl -n chaos-demo expose deployment nginx --port=80
    kubectl -n chaos-demo get pods -l app=nginx
    ```
+2. In the ChaosCenter dashboard, create a new probe
 
-2. In the Litmus portal, create and run a pod-delete experiment:
+   - Go to `Resilience probes`.
+   - Click `New probe`
+   - Select `Command probe` as the type
+   - Configure the probe as follows:
+       Name: `nginx-probe`
+       Timeout: 10s
+       Interval: 1s
+       Attempt: 1
+       Command: `kubectl get pods -n chaos-demo | grep nginx | grep Running | wc -l`
+       Type: Int
+       Comparison Criteria: >
+       Value: 2
+2. In the ChaosCenter dashboard, create and run a pod-delete experiment:
 
    - Open the Litmus project.
    - Choose the OKE chaos infrastructure or agent.
@@ -122,6 +135,7 @@ The following example deploys an `nginx` workload and runs a pod-delete chaos ex
    - Set the target namespace to `chaos-demo`.
    - Set the application label to `app=nginx`.
    - Use a short duration for the first run, for example 30 seconds.
+   - Add the probe configured above
    - Start the experiment.
 
 3. Watch the workload while the experiment runs:
