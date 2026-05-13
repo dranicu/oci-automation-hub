@@ -1,4 +1,3 @@
-
 # Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
 # The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
 
@@ -42,6 +41,11 @@ resource "oci_containerengine_node_pool" "litmus-pool" {
   name               = "litmus-pool"
   node_shape         = "VM.Standard.E5.Flex"
   kubernetes_version = var.kubernetes_version
+
+  node_metadata = {
+    user_data = filebase64("cloud-init.sh")
+  }
+
   node_config_details {
     placement_configs {
       availability_domain = data.oci_identity_availability_domains.ads.availability_domains[0].name
