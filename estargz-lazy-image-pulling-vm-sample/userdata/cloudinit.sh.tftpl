@@ -1,0 +1,345 @@
+#!/bin/bash
+
+# Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
+# The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
+
+set -euo pipefail
+
+REGISTRY="${registry}"
+REGION="${region}"
+ESTARGZ_IMAGE="${estargz_image}"
+REGULAR_IMAGE="${regular_image}"
+RUN_VALIDATION="${run_validation}"
+NERDCTL_VERSION="2.2.1"
+STARGZ_VERSION="0.18.1"
+CNI_VERSION="v1.6.2"
+
+exec > >(tee -a /var/log/estargz-cloudinit.log) 2>&1
+
+echo "Starting eStargz VM bootstrap"
+echo "Region: $${REGION}"
+echo "Registry: $${REGISTRY}"
+
+until curl -fsS "https://yum.$${REGION}.oci.oraclecloud.com" >/dev/null; do
+  echo "Waiting for network..."
+  sleep 5
+done
+
+dnf_ready=false
+for attempt in $(seq 1 12); do
+  if dnf -y makecache; then
+    dnf_ready=true
+    break
+  fi
+  echo "Waiting for yum repositories... attempt $${attempt}/12"
+  sleep 10
+done
+
+if [ "$${dnf_ready}" != "true" ]; then
+  echo "Yum repositories did not become ready in time."
+  exit 1
+fi
+
+for attempt in $(seq 1 6); do
+  if dnf -y install fuse wget tar gzip curl cloud-utils-growpart; then
+    break
+  fi
+  if [ "$${attempt}" -eq 6 ]; then
+    echo "Failed to install required packages after retries."
+    exit 1
+  fi
+  echo "Retrying package installation... attempt $${attempt}/6"
+  sleep 10
+done
+modprobe fuse || true
+
+echo "Root filesystem before resize:"
+df -h /
+
+if [ -x /usr/libexec/oci-growfs ]; then
+  /usr/libexec/oci-growfs -y || true
+elif [ -x /usr/sbin/oci-growfs ]; then
+  /usr/sbin/oci-growfs -y || true
+else
+  echo "oci-growfs not found; trying generic growpart fallback"
+  ROOT_SOURCE="$(findmnt -n -o SOURCE /)"
+  ROOT_DISK="/dev/$(lsblk -no PKNAME "$${ROOT_SOURCE}" 2>/dev/null || true)"
+  ROOT_PART_NUM="$(echo "$${ROOT_SOURCE}" | sed -E 's#^/dev/[a-zA-Z]+([0-9]+)$#\1#')"
+  ROOT_FSTYPE="$(findmnt -n -o FSTYPE /)"
+
+  if [ -n "$${ROOT_DISK}" ] && [ -n "$${ROOT_PART_NUM}" ] && [ "$${ROOT_PART_NUM}" != "$${ROOT_SOURCE}" ]; then
+    growpart "$${ROOT_DISK}" "$${ROOT_PART_NUM}" || true
+
+    if [ "$${ROOT_FSTYPE}" = "xfs" ]; then
+      xfs_growfs /
+    elif [ "$${ROOT_FSTYPE}" = "ext4" ]; then
+      resize2fs "$${ROOT_SOURCE}"
+    else
+      echo "Unsupported root filesystem for automatic grow: $${ROOT_FSTYPE}"
+    fi
+  fi
+fi
+
+echo "Root filesystem after resize:"
+df -h /
+
+systemctl disable --now crio 2>/dev/null || true
+systemctl disable --now stargz-store 2>/dev/null || true
+umount -l /var/lib/stargz-store/store 2>/dev/null || true
+
+cd /tmp
+
+if ! command -v /usr/local/bin/nerdctl >/dev/null 2>&1; then
+  wget -q "https://github.com/containerd/nerdctl/releases/download/v$${NERDCTL_VERSION}/nerdctl-full-$${NERDCTL_VERSION}-linux-amd64.tar.gz"
+  tar -C /usr/local -xzf "nerdctl-full-$${NERDCTL_VERSION}-linux-amd64.tar.gz"
+fi
+
+wget -q -O /etc/systemd/system/containerd.service \
+  https://raw.githubusercontent.com/containerd/containerd/main/containerd.service
+
+if ! command -v /usr/local/bin/containerd-stargz-grpc >/dev/null 2>&1; then
+  wget -q "https://github.com/containerd/stargz-snapshotter/releases/download/v$${STARGZ_VERSION}/stargz-snapshotter-v$${STARGZ_VERSION}-linux-amd64.tar.gz"
+  tar -C /usr/local/bin -xvf "stargz-snapshotter-v$${STARGZ_VERSION}-linux-amd64.tar.gz" \
+    containerd-stargz-grpc ctr-remote
+fi
+
+wget -q -O /etc/systemd/system/stargz-snapshotter.service \
+  https://raw.githubusercontent.com/containerd/stargz-snapshotter/main/script/config/etc/systemd/system/stargz-snapshotter.service
+
+mkdir -p /etc/containerd
+/usr/local/bin/containerd config default >/etc/containerd/config.toml
+sed -i 's/^version = .*/version = 2/' /etc/containerd/config.toml
+
+cat >>/etc/containerd/config.toml <<'EOF'
+
+[proxy_plugins]
+  [proxy_plugins.stargz]
+    type = "snapshot"
+    address = "/run/containerd-stargz-grpc/containerd-stargz-grpc.sock"
+EOF
+
+mkdir -p /opt/cni/bin
+if [ ! -x /opt/cni/bin/bridge ]; then
+  wget -q "https://github.com/containernetworking/plugins/releases/download/$${CNI_VERSION}/cni-plugins-linux-amd64-$${CNI_VERSION}.tgz"
+  tar -C /opt/cni/bin -xzf "cni-plugins-linux-amd64-$${CNI_VERSION}.tgz"
+fi
+
+systemctl daemon-reload
+systemctl enable --now stargz-snapshotter
+systemctl enable --now containerd
+systemctl restart containerd
+
+cat >/etc/estargz-benchmark.env <<EOF
+REGISTRY="$${REGISTRY}"
+ESTARGZ_IMAGE="$${ESTARGZ_IMAGE}"
+REGULAR_IMAGE="$${REGULAR_IMAGE}"
+# Optional runtime overrides:
+# CONTAINER_CMD="true"
+# LOG_FILE="/var/log/estargz-benchmark.log"
+# SUMMARY_FILE="/var/log/estargz-summary.txt"
+EOF
+
+cat >/usr/local/bin/estargz-status.sh <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+echo "== services =="
+systemctl --no-pager --full status containerd stargz-snapshotter || true
+
+echo
+echo "== nerdctl =="
+/usr/local/bin/nerdctl version || true
+
+echo
+echo "== containerd plugins =="
+/usr/local/bin/ctr plugins ls | grep -E 'stargz|overlayfs|snapshot' || true
+
+echo
+echo "== configured images =="
+cat /etc/estargz-benchmark.env
+
+echo
+echo "== root filesystem =="
+df -h /
+EOF
+
+cat >/usr/local/bin/reset-estargz-cache.sh <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+echo "Stopping containerd and stargz-snapshotter..."
+systemctl stop stargz-snapshotter containerd
+
+echo "Removing containerd and stargz snapshotter state..."
+rm -rf /var/lib/containerd /run/containerd
+rm -rf /var/lib/containerd-stargz-grpc /run/containerd-stargz-grpc
+
+echo "Starting services..."
+systemctl start stargz-snapshotter
+systemctl start containerd
+
+echo "Cache reset complete."
+EOF
+
+cat >/usr/local/bin/test-estargz.sh <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+ENV_REGISTRY="$${REGISTRY:-}"
+ENV_ESTARGZ_IMAGE="$${ESTARGZ_IMAGE:-}"
+ENV_REGULAR_IMAGE="$${REGULAR_IMAGE:-}"
+
+source /etc/estargz-benchmark.env
+
+REGISTRY="$${ENV_REGISTRY:-$${REGISTRY}}"
+ESTARGZ_IMAGE="$${ENV_ESTARGZ_IMAGE:-$${ESTARGZ_IMAGE}}"
+REGULAR_IMAGE="$${ENV_REGULAR_IMAGE:-$${REGULAR_IMAGE}}"
+
+LOG_FILE="$${LOG_FILE:-/var/log/estargz-benchmark.log}"
+SUMMARY_FILE="$${SUMMARY_FILE:-/var/log/estargz-summary.txt}"
+CONTAINER_CMD="$${CONTAINER_CMD:-true}"
+RESULTS_FILE="$(mktemp)"
+
+if [ -z "$${ESTARGZ_IMAGE}" ] && [ -z "$${REGULAR_IMAGE}" ]; then
+  cat <<MSG | tee -a "$${LOG_FILE}"
+No images configured.
+
+Set at least ESTARGZ_IMAGE, and ideally REGULAR_IMAGE too, in:
+  /etc/estargz-benchmark.env
+
+Example:
+  REGISTRY="fra.ocir.io"
+  ESTARGZ_IMAGE="fra.ocir.io/<namespace>/<repo>/<image>:<estargz-tag>"
+  REGULAR_IMAGE="fra.ocir.io/<namespace>/<repo>/<image>:<regular-tag>"
+MSG
+  exit 2
+fi
+
+run_case() {
+  local name="$1"
+  local snapshotter="$2"
+  local image="$3"
+  local case_log
+  local status
+  local real_time
+  local elapsed_line
+  local downloaded
+
+  if [ -z "$${image}" ]; then
+    echo "Skipping $${name}: image not configured" | tee -a "$${LOG_FILE}"
+    printf '%s|%s|%s|%s|%s|%s|%s\n' "$${name}" "$${snapshotter}" "" "skipped" "" "" "" >>"$${RESULTS_FILE}"
+    return 0
+  fi
+
+  case_log="$(mktemp)"
+
+  echo | tee -a "$${LOG_FILE}"
+  echo "[$(date -Is)] Reset before $${name}" | tee -a "$${LOG_FILE}"
+  /usr/local/bin/reset-estargz-cache.sh | tee -a "$${LOG_FILE}"
+
+  echo "[$(date -Is)] Running $${name}" | tee -a "$${LOG_FILE}"
+  echo "snapshotter=$${snapshotter}" | tee -a "$${LOG_FILE}"
+  echo "image=$${image}" | tee -a "$${LOG_FILE}"
+
+  set +e
+  /usr/bin/time -p /usr/local/bin/nerdctl --snapshotter "$${snapshotter}" run --rm "$${image}" $${CONTAINER_CMD} \
+    2>&1 | tee -a "$${LOG_FILE}" | tee "$${case_log}"
+  status=$${PIPESTATUS[0]}
+  set -e
+
+  real_time="$(awk '$1 == "real" { value = $2 } END { print value }' "$${case_log}")"
+  elapsed_line="$(grep -E '^elapsed:' "$${case_log}" | tail -n 1 || true)"
+  downloaded="$(printf '%s\n' "$${elapsed_line}" | sed -E 's/.*total:[[:space:]]*([^()]*)\(.*/\1/' | xargs || true)"
+
+  if [ -z "$${downloaded}" ] || [ "$${downloaded}" = "$${elapsed_line}" ]; then
+    downloaded="unknown"
+  fi
+
+  if [ "$${status}" -eq 0 ]; then
+    printf '%s|%s|%s|%s|%s|%s|%s\n' "$${name}" "$${snapshotter}" "$${image}" "ok" "$${real_time}" "$${downloaded}" "$${elapsed_line}" >>"$${RESULTS_FILE}"
+  else
+    printf '%s|%s|%s|%s|%s|%s|%s\n' "$${name}" "$${snapshotter}" "$${image}" "failed:$${status}" "$${real_time}" "$${downloaded}" "$${elapsed_line}" >>"$${RESULTS_FILE}"
+  fi
+
+  rm -f "$${case_log}"
+  return "$${status}"
+}
+
+write_summary() {
+  local estargz_real
+  local regular_real
+  local improvement
+
+  estargz_real="$(awk -F'|' '$1 == "estargz lazy pull" { print $5 }' "$${RESULTS_FILE}" | tail -n 1)"
+  regular_real="$(awk -F'|' '$1 == "regular baseline" { print $5 }' "$${RESULTS_FILE}" | tail -n 1)"
+
+  improvement="n/a"
+  if [ -n "$${estargz_real}" ] && [ -n "$${regular_real}" ]; then
+    improvement="$(awk -v regular="$${regular_real}" -v estargz="$${estargz_real}" 'BEGIN {
+      if (regular > 0) {
+        printf "%.2f%% faster time-to-first-run", ((regular - estargz) / regular) * 100
+      } else {
+        printf "n/a"
+      }
+    }')"
+  fi
+
+  {
+    echo "eStargz benchmark summary"
+    echo "Generated: $(date -Is)"
+    echo "Hostname: $(hostname)"
+    echo "Kernel: $(uname -r)"
+    echo "Registry: $${REGISTRY}"
+    echo "Container command: $${CONTAINER_CMD}"
+    echo
+    echo "Root filesystem:"
+    df -h /
+    echo
+    echo "Results:"
+    awk -F'|' '
+      {
+        printf "\n%s\n", $1
+        printf "  snapshotter: %s\n", $2
+        printf "  image: %s\n", ($3 == "" ? "not configured" : $3)
+        printf "  status: %s\n", $4
+        printf "  real_seconds: %s\n", ($5 == "" ? "n/a" : $5)
+        printf "  downloaded_initially: %s\n", ($6 == "" ? "n/a" : $6)
+        if ($7 != "") {
+          printf "  nerdctl_elapsed_line: %s\n", $7
+        }
+      }
+    ' "$${RESULTS_FILE}"
+    echo
+    echo "Improvement: $${improvement}"
+    echo
+    echo "Raw log: $${LOG_FILE}"
+  } | tee "$${SUMMARY_FILE}" | tee -a "$${LOG_FILE}" >/dev/null
+}
+
+touch "$${LOG_FILE}"
+chmod 0644 "$${LOG_FILE}"
+
+echo "eStargz benchmark started at $(date -Is)" | tee -a "$${LOG_FILE}"
+echo "If the images are private, run: sudo /usr/local/bin/nerdctl login $${REGISTRY}" | tee -a "$${LOG_FILE}"
+
+run_case "estargz lazy pull" "stargz" "$${ESTARGZ_IMAGE}" || true
+run_case "regular baseline" "overlayfs" "$${REGULAR_IMAGE}" || true
+write_summary
+
+echo | tee -a "$${LOG_FILE}"
+echo "Benchmark log: $${LOG_FILE}" | tee -a "$${LOG_FILE}"
+echo "Benchmark summary: $${SUMMARY_FILE}" | tee -a "$${LOG_FILE}"
+rm -f "$${RESULTS_FILE}"
+EOF
+
+chmod +x /usr/local/bin/estargz-status.sh
+chmod +x /usr/local/bin/reset-estargz-cache.sh
+chmod +x /usr/local/bin/test-estargz.sh
+
+chown opc:opc /etc/estargz-benchmark.env
+
+if [ "$${RUN_VALIDATION}" = "true" ]; then
+  /usr/local/bin/test-estargz.sh || true
+fi
+
+echo "eStargz VM bootstrap complete"
