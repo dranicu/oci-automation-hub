@@ -26,7 +26,7 @@ resource "null_resource" "wait_for_block_volume" {
   connection {
     type        = "ssh"
     host        = var.subnet_is_public && var.assign_public_ip ? oci_core_instance.this[count.index].public_ip : oci_core_instance.this[count.index].private_ip
-    user        = "opc"
+    user        = local.ssh_user
     private_key = local.effective_ssh_private_key
     timeout     = "10m"
   }
@@ -116,7 +116,7 @@ resource "null_resource" "fio_benchmark" {
   connection {
     type        = "ssh"
     host        = var.subnet_is_public && var.assign_public_ip ? oci_core_instance.this[count.index].public_ip : oci_core_instance.this[count.index].private_ip
-    user        = "opc"
+    user        = local.ssh_user
     private_key = local.effective_ssh_private_key
     timeout     = "15m"
   }
@@ -143,7 +143,7 @@ resource "null_resource" "fio_benchmark" {
       "echo ''",
 
       # Verify fio is installed
-      "if ! command -v fio &>/dev/null; then",
+      "if ! command -v fio >/dev/null 2>&1; then",
       "  echo 'ERROR: fio not found. Check /var/log/cloud-init-tools.log'",
       "  exit 1",
       "fi",
@@ -244,7 +244,7 @@ resource "null_resource" "fio_collect_results" {
   connection {
     type        = "ssh"
     host        = var.subnet_is_public && var.assign_public_ip ? oci_core_instance.this[count.index].public_ip : oci_core_instance.this[count.index].private_ip
-    user        = "opc"
+    user        = local.ssh_user
     private_key = local.effective_ssh_private_key
     timeout     = "5m"
   }

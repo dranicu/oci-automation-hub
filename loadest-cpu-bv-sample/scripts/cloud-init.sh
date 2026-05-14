@@ -245,21 +245,34 @@ else
     -o /tmp/oci-cli-install.sh 2>>"$LOG"
   chmod +x /tmp/oci-cli-install.sh
 
-  log "Running OCI CLI installer for opc user..."
-  cd /home/opc
-  sudo -u opc bash /tmp/oci-cli-install.sh --accept-all-defaults >>"$LOG" 2>&1
+  # Detect the default login user (opc on Oracle Linux, ubuntu on Ubuntu, etc.)
+  DEFAULT_USER=""
+  for u in opc ubuntu cloud-user ec2-user; do
+    if id "$u" &>/dev/null; then
+      DEFAULT_USER="$u"
+      break
+    fi
+  done
+  if [ -z "$DEFAULT_USER" ]; then
+    DEFAULT_USER=$(getent passwd | awk -F: '$3>=1000 && $3<65534 {print $1}' | head -1)
+  fi
+  DEFAULT_HOME=$(getent passwd "$DEFAULT_USER" | cut -d: -f6)
+
+  log "Running OCI CLI installer for $DEFAULT_USER user..."
+  cd "$DEFAULT_HOME"
+  sudo -u "$DEFAULT_USER" bash /tmp/oci-cli-install.sh --accept-all-defaults >>"$LOG" 2>&1
   rm -f /tmp/oci-cli-install.sh
 
-  # The installer puts it in ~/bin/oci for the opc user
+  # The installer puts it in ~/bin/oci for the default user
   # Also create a system-wide symlink so remote-exec can find it
   OCI_BIN=""
-  if [ -x /home/opc/bin/oci ]; then
-    OCI_BIN="/home/opc/bin/oci"
-  elif [ -x /home/opc/lib/oracle-cli/bin/oci ]; then
-    OCI_BIN="/home/opc/lib/oracle-cli/bin/oci"
+  if [ -x "$DEFAULT_HOME/bin/oci" ]; then
+    OCI_BIN="$DEFAULT_HOME/bin/oci"
+  elif [ -x "$DEFAULT_HOME/lib/oracle-cli/bin/oci" ]; then
+    OCI_BIN="$DEFAULT_HOME/lib/oracle-cli/bin/oci"
   else
     # Search for it
-    OCI_BIN=$(find /home/opc -name "oci" -type f -executable 2>/dev/null | head -1)
+    OCI_BIN=$(find "$DEFAULT_HOME" -name "oci" -type f -executable 2>/dev/null | head -1)
   fi
 
   if [ -n "$OCI_BIN" ] && [ -x "$OCI_BIN" ]; then
@@ -272,7 +285,7 @@ else
     echo "$OCI_VER" > "$OCI_CLI_MARKER"
   else
     log "WARNING: OCI CLI installation completed but binary not found."
-    log "Searched in /home/opc/bin and /home/opc/lib/oracle-cli/bin"
+    log "Searched in $DEFAULT_HOME/bin and $DEFAULT_HOME/lib/oracle-cli/bin"
     log "Benchmark results will still be saved locally but not pushed to OCI Logging."
   fi
 fi
