@@ -54,7 +54,6 @@ This Terraform stack provisions an OKE cluster and installs Litmus Chaos on it b
    - Choose the compartment where the OKE and networking resources will be created.
    - Select the Kubernetes version.
    - Provide your SSH public key.
-   - Keep the default network CIDR values unless you need to avoid overlap with existing networks.
    - Click **Next**.
 
 4. Review the stack configuration.
