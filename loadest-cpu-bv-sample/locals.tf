@@ -8,6 +8,10 @@ locals {
   # Home region for Identity resources
   home_region = data.oci_identity_region_subscriptions.this.region_subscriptions[0].region_name
 
+  # Default SSH login user, auto-detected from the image OS.
+  # Ubuntu images log in as "ubuntu"; Oracle Linux / others use "opc".
+  ssh_user = length(regexall("(?i)ubuntu", data.oci_core_image.instance_image.operating_system)) > 0 ? "ubuntu" : "opc"
+
   # SSH private key: prefer Vault secret, fall back to direct paste
   effective_ssh_private_key = (
     var.ssh_private_key_secret_ocid != ""

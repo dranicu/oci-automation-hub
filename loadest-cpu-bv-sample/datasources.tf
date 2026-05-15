@@ -21,6 +21,11 @@ data "oci_secrets_secretbundle" "ssh_private_key" {
   secret_id = var.ssh_private_key_secret_ocid
 }
 
+# Image details — used to auto-detect the default OS login user (opc vs ubuntu)
+data "oci_core_image" "instance_image" {
+  image_id = var.instance_image_ocid
+}
+
 # Home region lookup — needed for Identity resources (dynamic groups, policies)
 data "oci_identity_tenancy" "this" {
   tenancy_id = var.tenancy_ocid

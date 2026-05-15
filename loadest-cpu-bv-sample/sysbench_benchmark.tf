@@ -28,7 +28,7 @@ resource "null_resource" "wait_for_cloud_init" {
   connection {
     type        = "ssh"
     host        = var.subnet_is_public && var.assign_public_ip ? oci_core_instance.this[count.index].public_ip : oci_core_instance.this[count.index].private_ip
-    user        = "opc"
+    user        = local.ssh_user
     private_key = local.effective_ssh_private_key
     timeout     = "10m"
   }
@@ -55,7 +55,7 @@ resource "null_resource" "wait_for_cloud_init" {
       "  sleep 5",
       "  ELAPSED=$((ELAPSED + 5))",
       "done",
-      "if command -v sysbench &>/dev/null; then",
+      "if command -v sysbench >/dev/null 2>&1; then",
       "  echo \">>> sysbench ready: $(sysbench --version)\"",
       "elif [ -x /usr/local/bin/sysbench ]; then",
       "  echo \">>> sysbench ready: $(/usr/local/bin/sysbench --version)\"",
@@ -64,7 +64,7 @@ resource "null_resource" "wait_for_cloud_init" {
       "  cat /var/log/cloud-init-tools.log 2>/dev/null || true",
       "  exit 1",
       "fi",
-      "if command -v fio &>/dev/null; then",
+      "if command -v fio >/dev/null 2>&1; then",
       "  echo \">>> fio ready: $(fio --version)\"",
       "else",
       "  echo 'WARNING: fio not found. FIO benchmarks will not be available.'",
@@ -100,7 +100,7 @@ resource "null_resource" "cpu_benchmark" {
   connection {
     type        = "ssh"
     host        = var.subnet_is_public && var.assign_public_ip ? oci_core_instance.this[count.index].public_ip : oci_core_instance.this[count.index].private_ip
-    user        = "opc"
+    user        = local.ssh_user
     private_key = local.effective_ssh_private_key
     timeout     = "10m"
   }
@@ -202,7 +202,7 @@ resource "null_resource" "memory_benchmark" {
   connection {
     type        = "ssh"
     host        = var.subnet_is_public && var.assign_public_ip ? oci_core_instance.this[count.index].public_ip : oci_core_instance.this[count.index].private_ip
-    user        = "opc"
+    user        = local.ssh_user
     private_key = local.effective_ssh_private_key
     timeout     = "10m"
   }
@@ -268,7 +268,7 @@ resource "null_resource" "collect_results" {
   connection {
     type        = "ssh"
     host        = var.subnet_is_public && var.assign_public_ip ? oci_core_instance.this[count.index].public_ip : oci_core_instance.this[count.index].private_ip
-    user        = "opc"
+    user        = local.ssh_user
     private_key = local.effective_ssh_private_key
     timeout     = "5m"
   }
