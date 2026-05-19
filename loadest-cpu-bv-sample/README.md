@@ -128,7 +128,7 @@ Latency (ms):
 
 ## Deploy via Resource Manager
 
-1.
+1. **Deploy**: Use the below button to deploy the solution in your tenancy using Resource Manager.
 
 <p align="center">
   <a href="https://cloud.oracle.com/resourcemanager/stacks/create?zipUrl=https://github.com/oracle-devrel/oci-automation-hub/releases/download/loadest-cpu-bv-sample/loadest-cpu-bv-sample.zip">
