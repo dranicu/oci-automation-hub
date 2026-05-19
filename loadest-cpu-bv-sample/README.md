@@ -128,16 +128,17 @@ Latency (ms):
 
 ## Deploy via Resource Manager
 
-1. **Create ZIP**:
-   ```bash
-   zip -r oci-rm-stack.zip . -x "*.terraform*" -x "*.tfstate*" -x "*.tfvars" -x ".git/*"
-   ```
+1.
 
-2. **Upload**: OCI Console > Resource Manager > Stacks > Create Stack > upload ZIP
+<p align="center">
+  <a href="https://cloud.oracle.com/resourcemanager/stacks/create?zipUrl=https://github.com/oracle-devrel/oci-automation-hub/releases/download/loadest-cpu-bv-sample/loadest-cpu-bv-sample.zip">
+    <img src="https://docs.oracle.com/en-us/iaas/Content/Resources/Images/deploy-to-oracle-cloud.svg" alt="Deploy to Oracle Cloud" />
+  </a>
+</p>
 
-3. **Configure**: Fill in the form. The sections appear in order: General, Network, Compute, Block Volumes, Benchmark General, Sysbench, FIO, IAM.
+2. **Configure**: Fill in the form. The sections appear in order: General, Network, Compute, Block Volumes, Benchmark General, Sysbench, FIO, IAM.
 
-4. **Plan > Apply**: Benchmark results stream in the apply logs.
+3. **Plan > Apply**: Benchmark results stream in the apply logs.
 
 ## Important Notes
 
