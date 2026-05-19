@@ -24,15 +24,10 @@ This Terraform stack deploys an OKE cluster and installs Chaos Mesh on it. The i
   allow group <group-name> to manage orm-stacks in compartment <compartment-name>
   allow group <group-name> to manage orm-jobs in compartment <compartment-name>
   allow group <group-name> to manage cluster-family in compartment <compartment-name>
-  allow group <group-name> to manage virtual-network-family in compartment <compartment-name>
-  allow group <group-name> to manage instance-family in compartment <compartment-name>
-  allow group <group-name> to manage volume-family in compartment <compartment-name>
-  allow group <group-name> to manage load-balancers in compartment <compartment-name>
   ```
 
 - A machine with OCI CLI configured and `kubectl` installed, or OCI Cloud Shell.
 - SSH public key. The ORM stack schema requires this input.
-- Kubernetes version supported by OKE in the selected OCI region.
 - GitHub release archive or repository containing this Terraform directory.
 
 ## Task 1: Deploy Chaos Mesh on OKE using Oracle Resource Manager
@@ -57,8 +52,8 @@ This Terraform stack deploys an OKE cluster and installs Chaos Mesh on it. The i
    - Choose the compartment where the OKE and networking resources will be created.
    - Select the Kubernetes version.
    - Provide your SSH public key.
-   - Keep **Enable Metrics Server** enabled. It is required for the HPA example.
-   - Choose the Chaos Mesh dashboard service type. `ClusterIP` is sufficient when using `kubectl port-forward`.
+   - Keep **Enable Metrics Server** and **Enable cert-manager** enabled. They are required for the HPA example.
+   - Choose the Chaos Mesh dashboard service type. `ClusterIP` is recommended.
    - Click **Next**.
 
 5. Review the stack configuration.
@@ -72,7 +67,7 @@ This Terraform stack deploys an OKE cluster and installs Chaos Mesh on it. The i
    - A 3-node OKE node pool named `chaosmesh-pool`.
    - OKE add-ons: cert-manager and Metrics Server.
    - A Kubernetes namespace named `chaos-mesh`.
-   - A Helm release named `chaos-mesh` from `https://charts.chaos-mesh.org/`.
+   - Chaos Mesh resources, via helm.
 
 ## Task 2: Access the OKE cluster
 
@@ -119,13 +114,13 @@ This Terraform stack deploys an OKE cluster and installs Chaos Mesh on it. The i
 The example uses the Kubernetes manifests included in this directory:
 
 - `deployment.yaml` deploys `nginx`.
-- `autoscaler.yaml` creates the HPA. This is the HPA manifest for this repository.
+- `hpa.yaml` creates the HPA. This is the Horizontal Pod Autoscaler (HPA) manifest for this repository.
 - `stresschaos.yaml` creates the Chaos Mesh memory stress experiment.
 
 1. Open a new shell and change to the Terraform directory from the unzipped archive:
 
    ```bash
-   cd <unzipped-archive>/terraform
+   cd <unzipped-archive>
    ```
 
 2. Create the `nginx` deployment:
@@ -139,7 +134,7 @@ The example uses the Kubernetes manifests included in this directory:
 3. Configure the HPA:
 
    ```bash
-   kubectl apply -f autoscaler.yaml
+   kubectl apply -f hpa.yaml
    kubectl get hpa nginx-hpa -n default
    ```
 
@@ -186,7 +181,7 @@ The example uses the Kubernetes manifests included in this directory:
 2. Delete the HPA:
 
    ```bash
-   kubectl delete -f autoscaler.yaml --ignore-not-found=true
+   kubectl delete -f hpa.yaml --ignore-not-found=true
    ```
 
 3. Delete the `nginx` deployment:
