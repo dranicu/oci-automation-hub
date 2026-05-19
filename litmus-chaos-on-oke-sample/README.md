@@ -89,16 +89,29 @@ This Terraform stack provisions an OKE cluster and installs Litmus Chaos on it b
 
    > **Note:** Many Litmus Chaos chart versions use `admin` / `litmus` as the initial credentials. If your deployed version prompts for a different setup flow, follow the instructions shown in the portal. Change the default password after the first login.
 
-3. Confirm that the OKE cluster is available as a chaos infrastructure or agent. If the portal asks you to install/register a chaos infrastructure, select this OKE cluster and apply the generated manifest with `kubectl`.
-   - Generate a kubeconfig for the OKE cluster from OCI Cloud Shell or a workstation with OCI CLI configured.
-     Find the cluster in the OCI Console under **Developer Services** > **Kubernetes Clusters (OKE)** > `litmus`.
-     On this page click **Actions** > **Access cluster** and choose the way you want to connect (cloud shell or local machine).
-   - In LitmusChaos portal enable chaos, e.g.:
-     - Name: local
-     - Chaos Components Installation: Cluster-wide access
-     - Installation Location (Namespace): litmus
-     - Service Account Name: litmus
-   - download the yaml file and apply it; in ChaosCenter dashboard wait for the cluster to become `CONNECTED`
+3. Close the greeting pop-up that suggests to enable chaos environment.
+
+4. On the left-side menu, click **Environments** and then **New Environment**. Choose a name for the environment, select **Production** and then click **Save**.
+
+5. Generate a kubeconfig for the OKE cluster from OCI Cloud Shell or a workstation with OCI CLI configured.
+  Find the cluster in the OCI Console under **Developer Services** > **Kubernetes Clusters (OKE)** > `litmus`.
+  On this page click **Actions** > **Access cluster** and choose the way you want to connect (cloud shell or local machine).
+  
+6. In LitmusChaos portal enable chaos:
+     - Select the new environment and then click **Enable Chaos**
+     - In the new window, fill in required data, e.g.:
+       - Name: local
+       - Chaos Components Installation: Cluster-wide access
+       - Installation Location (Namespace): litmus
+       - Service Account Name: litmus
+     - Download the yaml file.
+       
+7. Apply the downloaded yaml file:
+   - go to a shell where you configured kube config and apply the yaml file, e.g.:
+     ```bash
+     kubectl apply -f local-litmus-chaos-enable.yml
+     ```
+   - in ChaosCenter dashboard wait for the cluster to become `CONNECTED`
 
 ## Task 3: Run a basic chaos experiment
 
