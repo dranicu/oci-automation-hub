@@ -26,9 +26,8 @@ This Terraform stack deploys an OKE cluster and installs Chaos Mesh on it. The i
   allow group <group-name> to manage cluster-family in compartment <compartment-name>
   ```
 
-- A machine with OCI CLI configured and `kubectl` installed, or OCI Cloud Shell.
+- A machine with OCI CLI configured and `kubectl` installed.
 - SSH public key. The ORM stack schema requires this input.
-- GitHub release archive or repository containing this Terraform directory.
 
 ## Task 1: Deploy Chaos Mesh on OKE using Oracle Resource Manager
 
@@ -42,7 +41,7 @@ This Terraform stack deploys an OKE cluster and installs Chaos Mesh on it. The i
    - Click **Create stack**.
    - Select **My configuration**.
    - In the **My configuration** section, select **Folder**.
-   - Upload the `terraform` directory from the unzipped archive.
+   - Upload the directory from the unzipped archive.
    - Give the stack a meaningful name, for example `chaos-mesh-on-oke`.
    - Choose the compartment where the stack metadata should be stored.
    - Click **Next**.
@@ -67,7 +66,7 @@ This Terraform stack deploys an OKE cluster and installs Chaos Mesh on it. The i
    - A 3-node OKE node pool named `chaosmesh-pool`.
    - OKE add-ons: cert-manager and Metrics Server.
    - A Kubernetes namespace named `chaos-mesh`.
-   - Chaos Mesh resources, via helm.
+   - Chaos Mesh resources, via helm, installed in `chaos-mesh` namespace.
 
 ## Task 2: Access the OKE cluster
 
@@ -79,7 +78,7 @@ This Terraform stack deploys an OKE cluster and installs Chaos Mesh on it. The i
 
 4. Copy the OCI CLI command shown in the console.
 
-5. Paste and run the command in OCI Cloud Shell or in a shell on a machine where OCI CLI is configured.
+5. Paste and run the command in a shell on a machine where OCI CLI is configured.
 
 6. Confirm that `kubectl` can access the cluster:
 
@@ -114,7 +113,7 @@ This Terraform stack deploys an OKE cluster and installs Chaos Mesh on it. The i
 The example uses the Kubernetes manifests included in this directory:
 
 - `deployment.yaml` deploys `nginx`.
-- `hpa.yaml` creates the HPA. This is the Horizontal Pod Autoscaler (HPA) manifest for this repository.
+- `hpa.yaml` creates the HPA. This is the Horizontal Pod Autoscaler (HPA) manifest.
 - `stresschaos.yaml` creates the Chaos Mesh memory stress experiment.
 
 1. Open a new shell and change to the Terraform directory from the unzipped archive:
