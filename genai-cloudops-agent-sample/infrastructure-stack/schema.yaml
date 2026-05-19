@@ -1,0 +1,130 @@
+# Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
+# The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
+
+title: DevOps Agent Stack
+description: Schema document for the DevOps Agent OCI Resource Manager stack.
+locale: en
+schemaVersion: 1.1.0
+
+variableGroups:
+  - title: OCI Provider Configuration
+    variables:
+      - ${region}
+      - ${tenancy_ocid}
+      - ${compartment_ocid}
+
+  - title: Stack Metadata
+    variables:
+      - ${display_name_prefix}
+      - ${component_description}
+
+  - title: Test Instace Configuration
+    variables:
+      - ${availability_domain}
+      - ${instance_shape}
+      - ${image_id}
+      - ${vcnCompartment}
+      - ${vcn_id}
+      - ${subnet_id}
+      - ${ssh_public_keys}
+
+
+  - title: Tagging (Optional)
+    variables:
+      - ${tag_value}
+
+variables:
+  region:
+    type: oci:identity:region:name
+    title: Region
+    description: OCI region where resources will be created.
+    required: true
+    visible: false
+
+  tenancy_ocid:
+    type: string
+    title: Tenancy OCID
+    description: OCI tenancy OCID. Can be supplied via TF_VAR_tenancy_ocid or environment.
+    required: true
+    visible: false
+
+  compartment_ocid:
+    type: oci:identity:compartment:id
+    title: Compartment OCID
+    description: OCI compartment OCID where resources will be created. Select from the drop-down.
+    required: true
+    dependsOn:
+      compartmentId: ${tenancy_ocid}
+
+  display_name_prefix:
+    type: string
+    title: Display name prefix
+    description: Prefix for all the components deployed by the stack.
+    required: true
+    pattern: "^[a-z_-]+$"
+
+  component_description:
+    type: text
+    title: Component description
+    description: Description for the components deployed by the stack.
+    required: true
+  
+  availability_domain:
+    type: oci:identity:availabilitydomain:name
+    dependsOn:
+      compartmentId: ${compartment_ocid}
+    visible: complexExpression
+    title: Availability Domain
+    description: Availability domain for the compute instance. Select from the drop-down.
+    required: true
+  
+  instance_shape:
+    type: enum
+    title: Instance Shape
+    description: Shape for the compute instance. Select from the drop-down.
+    required: true
+    enum:
+      - VM.Standard.E5.Flex
+      - VM.Standard.E4.Flex
+    
+  image_id:
+    type: enum
+    title: Image ID
+    description: Image ID for the compute instance. Select from the drop-down.
+    required: true
+    enum:
+      - "Oracle Linux 9"
+      - "Ubuntu 24.04"
+
+  vcnCompartment:
+    type: oci:identity:compartment:id
+    title: VCN Compartment
+    description: Compartment for the VCN. Select from the drop-down.
+    required: true
+
+  vcn_id:
+    type: oci:core:vcn:id
+    title: VCN Name
+    description: VCN for the compute instance. Select from the drop-down.
+    dependsOn:
+      compartmentId: ${vcnCompartment}
+
+  subnet_id:
+    type: oci:core:subnet:id
+    title: Subnet ID
+    description: Subnet ID for the compute instance. Select from the drop-down.
+    required: true
+    dependsOn:
+      compartmentId: ${vcnCompartment}
+      vcnId: ${vcn_id}
+  
+  ssh_public_keys:
+    type: oci:core:ssh:publickey
+    title: SSH Public Keys
+    required: true
+
+  tag_value:
+    type: oci:identity:tag:value
+    title: Tags
+    description: Defined and freeform tags for the stack resources.
+    required: false
