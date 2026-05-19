@@ -1,0 +1,17 @@
+kind: StressChaos
+apiVersion: chaos-mesh.org/v1alpha1
+metadata:
+  namespace: default
+  name: nginx-mem-1
+spec:
+  selector:
+    namespaces:
+      - default
+    labelSelectors:
+      app: nginx
+  mode: all
+  stressors:
+    memory:
+      workers: 4
+      size: 600MiB
+  duration: 120s
