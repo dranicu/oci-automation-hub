@@ -43,7 +43,8 @@ resource "oci_containerengine_node_pool" "chaosmesh-pool" {
   kubernetes_version = var.kubernetes_version
 
   node_metadata = {
-    user_data = filebase64("cloud-init.sh")
+    user_data = filebase64("cloud-init.sh"),
+    areLegacyImdsEndpointsDisabled = "true"
   }
   node_config_details {
     placement_configs {
