@@ -353,25 +353,12 @@ variables:
 
   ssh_private_key_secret_ocid:
     type: oci:kms:secret:id
-    title: "SSH Private Key — Vault Secret (Recommended)"
+    title: "SSH Private Key — Vault Secret"
     description: "Select an OCI Vault secret containing the SSH private key in PEM format. This is the secure method — the key is retrieved at apply time and never stored in stack variables."
-    required: false
+    required: true
     visible: run_benchmark
     dependsOn:
       compartmentId: compartment_ocid
-
-  ssh_private_key:
-    type: password
-    title: "SSH Private Key — Direct Paste (Fallback)"
-    description: "Only used if no Vault secret is selected above. Paste the PEM private key directly. Less secure — prefer the Vault method."
-    required: false
-    sensitive: true
-    visible:
-      and:
-        - run_benchmark
-        - eq:
-          - ssh_private_key_secret_ocid
-          - ""
 
   # =========================================================================
   # Benchmark — Sysbench (CPU / Memory)
