@@ -45,8 +45,7 @@ block_volume_attachment_type = "paravirtualized"  # paravirtualized | iscsi
 # --- Benchmark (General) ---
 run_benchmark                = true
 benchmark_run_id             = "1"       # Increment to re-run: 1 → 2 → 3
-# ssh_private_key_secret_ocid = "ocid1.vaultsecret.oc1..aaaa..."  # Recommended: Vault secret containing PEM key
-# ssh_private_key            = ""        # Fallback: paste PEM content directly (less secure)
+# ssh_private_key_secret_ocid = "ocid1.vaultsecret.oc1..aaaa..."  # OCI Vault secret containing the PEM private key
 
 # --- Benchmark: Sysbench (CPU / Memory) ---
 run_sysbench                 = true
