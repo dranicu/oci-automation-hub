@@ -197,21 +197,9 @@ variable "benchmark_run_id" {
 }
 
 variable "ssh_private_key_secret_ocid" {
-  description = "OCID of an OCI Vault secret containing the SSH private key (PEM format). This is the recommended secure method."
+  description = "OCID of an OCI Vault secret containing the SSH private key (PEM format). Required to connect to instances for benchmarking."
   type        = string
   default     = ""
-}
-
-variable "ssh_private_key" {
-  description = "SSH private key (PEM format) pasted directly. Use only if Vault secret is not provided. The Vault secret method above is recommended."
-  type        = string
-  sensitive   = true
-  default     = ""
-
-  validation {
-    condition     = var.ssh_private_key == "" || can(regex("^-----BEGIN .* KEY-----", var.ssh_private_key))
-    error_message = "SSH private key must be in PEM format (starting with '-----BEGIN ... KEY-----')."
-  }
 }
 
 # =============================================================================

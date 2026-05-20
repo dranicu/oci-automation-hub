@@ -19,6 +19,12 @@ OCI_CLI_MARKER="/tmp/.oci-cli-ready"
 SYSBENCH_VERSION="1.0.20"
 SYSBENCH_TARBALL_URL="https://github.com/akopytov/sysbench/archive/refs/tags/${SYSBENCH_VERSION}.tar.gz"
 
+# Make every repo non-fatal when its metadata can't be downloaded. Passed on the
+# dnf/yum command line, this overrides per-repo config so one unreachable repo
+# (e.g. ol8_ksplice, hosted on the OCI Services Network and unreachable without
+# a Service Gateway) cannot abort package installs.
+DNF_SAFE_OPTS=("--setopt=*.skip_if_unavailable=1")
+
 log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG"
 }
@@ -75,19 +81,19 @@ install_sysbench_rpm() {
     local PKG_MGR="yum"
   fi
 
-  $PKG_MGR install -y oracle-epel-release-el8 2>>"$LOG" \
-    || $PKG_MGR install -y oracle-epel-release-el9 2>>"$LOG" \
-    || $PKG_MGR install -y epel-release 2>>"$LOG" \
+  $PKG_MGR "${DNF_SAFE_OPTS[@]}" install -y oracle-epel-release-el8 2>>"$LOG" \
+    || $PKG_MGR "${DNF_SAFE_OPTS[@]}" install -y oracle-epel-release-el9 2>>"$LOG" \
+    || $PKG_MGR "${DNF_SAFE_OPTS[@]}" install -y epel-release 2>>"$LOG" \
     || log "WARNING: Could not install EPEL release package."
 
-  if $PKG_MGR install -y sysbench 2>>"$LOG"; then
+  if $PKG_MGR "${DNF_SAFE_OPTS[@]}" install -y sysbench 2>>"$LOG"; then
     log "sysbench installed via package manager."
     return 0
   fi
 
   log "sysbench not available in package repos. Falling back to source build..."
 
-  $PKG_MGR install -y \
+  $PKG_MGR "${DNF_SAFE_OPTS[@]}" install -y \
     make automake autoconf libtool \
     pkgconfig libaio-devel openssl-devel \
     gcc gcc-c++ \
@@ -167,7 +173,7 @@ install_fio_rpm() {
     PKG_MGR="yum"
   fi
 
-  if $PKG_MGR install -y fio 2>>"$LOG"; then
+  if $PKG_MGR "${DNF_SAFE_OPTS[@]}" install -y fio 2>>"$LOG"; then
     log "fio installed via package manager."
     return 0
   fi
@@ -232,7 +238,7 @@ else
   # Install python3 if not present (should be on OL8 but just in case)
   if ! command -v python3 &>/dev/null; then
     if command -v dnf &>/dev/null; then
-      dnf install -y python3 2>>"$LOG"
+      dnf "${DNF_SAFE_OPTS[@]}" install -y python3 2>>"$LOG"
     elif command -v apt-get &>/dev/null; then
       apt-get install -y python3 python3-venv 2>>"$LOG"
     fi

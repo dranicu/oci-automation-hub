@@ -12,11 +12,11 @@ locals {
   # Ubuntu images log in as "ubuntu"; Oracle Linux / others use "opc".
   ssh_user = length(regexall("(?i)ubuntu", data.oci_core_image.instance_image.operating_system)) > 0 ? "ubuntu" : "opc"
 
-  # SSH private key: prefer Vault secret, fall back to direct paste
+  # SSH private key, retrieved from the OCI Vault secret
   effective_ssh_private_key = (
     var.ssh_private_key_secret_ocid != ""
     ? base64decode(data.oci_secrets_secretbundle.ssh_private_key[0].secret_bundle_content[0].content)
-    : var.ssh_private_key
+    : ""
   )
 
   # Common freeform tags
