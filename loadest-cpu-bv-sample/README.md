@@ -38,12 +38,12 @@ This Terraform stack deploys a complete networking foundation, configurable comp
 
 ## SSH Private Key — Secure Handling
 
-The benchmarks use Terraform `remote-exec` provisioners which need SSH access. Two methods are available:
+The benchmarks use Terraform `remote-exec` provisioners which need SSH access. The method used:
 
 | Method | Security | How |
 |---|---|---|
-| **OCI Vault Secret** (recommended) | Key never leaves Vault; retrieved at apply time only | Select a Vault secret OCID in the RM form |
-| **Direct Paste** (fallback) | Key stored in RM stack variables (encrypted at rest) | Paste PEM content directly; field only appears if no Vault secret is selected |
+| **OCI Vault Secret** | Key never leaves Vault; retrieved at apply time only | Select a Vault secret OCID in the RM form |
+
 
 ### Setting Up the Vault Secret
 
