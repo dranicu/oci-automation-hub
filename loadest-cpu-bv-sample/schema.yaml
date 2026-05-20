@@ -12,7 +12,6 @@ variableGroups:
     visible: true
     variables:
       - compartment_ocid
-      - region
       - resource_name_prefix
 
   - title: "Network Configuration"
@@ -52,7 +51,6 @@ variableGroups:
       - run_benchmark
       - benchmark_run_id
       - ssh_private_key_secret_ocid
-      - ssh_private_key
 
   - title: "Benchmark — Sysbench (CPU / Memory)"
     visible: run_benchmark
@@ -104,11 +102,16 @@ variables:
     description: "Select the compartment to deploy resources into."
     required: true
 
+  # "region" is auto-populated by Resource Manager from the running session.
+  # Do NOT set a default — an explicit default is stored literally and breaks
+  # the provider. Hidden because oci:identity:region:name cannot be filtered to
+  # subscribed regions.
   region:
     type: oci:identity:region:name
     title: "Region"
-    description: "Select the OCI region."
+    description: "OCI region for deployment (set automatically to the region this stack runs in)."
     required: true
+    visible: false
 
   resource_name_prefix:
     type: string
@@ -353,25 +356,12 @@ variables:
 
   ssh_private_key_secret_ocid:
     type: oci:kms:secret:id
-    title: "SSH Private Key — Vault Secret (Recommended)"
+    title: "SSH Private Key — Vault Secret"
     description: "Select an OCI Vault secret containing the SSH private key in PEM format. This is the secure method — the key is retrieved at apply time and never stored in stack variables."
-    required: false
+    required: true
     visible: run_benchmark
     dependsOn:
       compartmentId: compartment_ocid
-
-  ssh_private_key:
-    type: password
-    title: "SSH Private Key — Direct Paste (Fallback)"
-    description: "Only used if no Vault secret is selected above. Paste the PEM private key directly. Less secure — prefer the Vault method."
-    required: false
-    sensitive: true
-    visible:
-      and:
-        - run_benchmark
-        - eq:
-          - ssh_private_key_secret_ocid
-          - ""
 
   # =========================================================================
   # Benchmark — Sysbench (CPU / Memory)

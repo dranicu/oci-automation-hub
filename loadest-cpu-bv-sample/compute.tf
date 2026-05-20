@@ -9,6 +9,21 @@ data "oci_identity_availability_domains" "this" {
 }
 
 # =============================================================================
+# Cloud-init version tracker
+#
+# cloud-init only runs on an instance's first boot, and `user_data` is an
+# updatable attribute — so editing the cloud-init script merely updates instance
+# metadata in place and the new script never runs. This resource hashes the
+# cloud-init content; oci_core_instance references it in replace_triggered_by so
+# the instance is recreated whenever the script changes.
+# =============================================================================
+resource "null_resource" "cloud_init_version" {
+  triggers = {
+    cloud_init = local.has_cloud_init ? md5(local.cloud_init_multipart) : "none"
+  }
+}
+
+# =============================================================================
 # Compute Instances
 # =============================================================================
 resource "oci_core_instance" "this" {
@@ -79,12 +94,10 @@ resource "oci_core_instance" "this" {
     }
   }
 
-  # Prevent forced replacement on shape changes — allow in-place update
+  # Recreate the instance whenever the cloud-init content changes, so script
+  # edits actually take effect (cloud-init runs only on first boot).
   lifecycle {
-    ignore_changes = [
-      # Source details changes shouldn't force replacement on re-apply
-      # Remove this block if you WANT image changes to force recreation
-    ]
+    replace_triggered_by  = [null_resource.cloud_init_version]
     create_before_destroy = false
   }
 }
