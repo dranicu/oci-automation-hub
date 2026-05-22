@@ -74,7 +74,7 @@ This Terraform stack deploys an OKE cluster and installs Chaos Mesh on it. The i
 
 2. Select the cluster named `chaosmesh`.
 
-3. Click **Access Cluster**.
+3. Click **Actions** drop-down menu and then click **Access Cluster**.
 
 4. Copy the OCI CLI command shown in the console.
 
