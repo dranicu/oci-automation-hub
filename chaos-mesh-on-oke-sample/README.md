@@ -78,7 +78,7 @@ This Terraform stack deploys an OKE cluster and installs Chaos Mesh on it. The i
 
 4. Copy the OCI CLI command shown in the console.
 
-5. Paste and run the command in a shell on a machine where OCI CLI is configured.
+5. Paste and run the command in a shell on a machine where OCI CLI and kubectl are configured.
 
 6. Confirm that `kubectl` can access the cluster:
 
@@ -106,11 +106,11 @@ This Terraform stack deploys an OKE cluster and installs Chaos Mesh on it. The i
    kubectl create token chaos-dashboard -n chaos-mesh
    ```
 
-4. In the web interface, give the token a name, for example `chaos`, and paste the token value generated above.
+4. In the web interface, give the token a name, for example `chaos`, and paste the token value generated above. Then click **Submit**
 
 ## Task 4: Run a basic usage example with nginx, HPA, and StressChaos
 
-The example uses the Kubernetes manifests included in this directory:
+The example uses the Kubernetes manifests included in **chaos-mesh-on-oke-sample** directory:
 
 - `deployment.yaml` deploys `nginx`.
 - `hpa.yaml` creates the HPA. This is the Horizontal Pod Autoscaler (HPA) manifest.
