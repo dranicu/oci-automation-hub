@@ -20,6 +20,8 @@ module "app_iam_policy" {
   compartment_ocid = var.compartment_ocid
   display_name           = "${var.display_name_prefix}_app_iam_policy"
   description    = "${var.component_description} - IAM Policy"
+  region = var.region
+  tenancy_ocid = var.tenancy_ocid
   statements     = [
     "Allow dynamic-group id ${module.app_dynamic_group.id} to use log-content in compartment id ${var.compartment_ocid}",
     "allow any-user to use stream-push in compartment id ${var.compartment_ocid} where all {request.principal.type='serviceconnector', request.principal.compartment.id='${var.compartment_ocid}'}"
@@ -40,6 +42,8 @@ module "container_iam_policy" {
   compartment_ocid = var.compartment_ocid
   display_name           = "${var.display_name_prefix}_container_iam_policy"
   description    = "${var.component_description} - IAM Policy"
+  region = var.region
+  tenancy_ocid = var.tenancy_ocid
   statements     = [
     "Allow dynamic-group id ${module.container_dynamic_group.id} to read repos in compartment id ${var.compartment_ocid}",
     "ALLOW dynamic-group id ${module.container_dynamic_group.id} to manage all-resources in compartment id ${var.compartment_ocid}"

@@ -21,3 +21,12 @@ variable "statements" {
   type = list(string)
   
 }
+
+variable "region" {
+  description = "OCI region where the IAM policy will be created."
+  type        = string
+}
+
+variable "tenancy_ocid" {
+  description = "value"
+}

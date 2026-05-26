@@ -92,7 +92,7 @@ The solution is deployed in three steps.
     * click `Next`
     * select `Run apply`
     * click `Create`
-3. Wait for the stack deployment to complete successfully.
+3. Wait for the stack deployment to complete successfully, Gen AI Agent creation and Document ingestion can take over 30 minutes depending on the region you are deploying in.
 4. After deployment, collect the outputs from the stack:
     * MCP OCIR repository path
     * Application OCIR repository path
