@@ -78,6 +78,18 @@ variables:
     description: Availability domain for the compute instance. Select from the drop-down.
     required: true
   
+
+  image_id:
+    type: oci:core:image:id
+    title: Image ID
+    description: Image ID for the compute instance. Select from the drop-down.
+    required: true
+    dependsOn:
+      compartmentId: ${compartment_ocid}
+      operatingSystem: "Oracle Linux"
+      operatingSystemVersion: "9"
+      shape: ${instance_shape}
+  
   instance_shape:
     type: enum
     title: Instance Shape
@@ -86,15 +98,6 @@ variables:
     enum:
       - VM.Standard.E5.Flex
       - VM.Standard.E4.Flex
-    
-  image_id:
-    type: enum
-    title: Image ID
-    description: Image ID for the compute instance. Select from the drop-down.
-    required: true
-    enum:
-      - "Oracle Linux 9"
-      - "Ubuntu 24.04"
 
   vcnCompartment:
     type: oci:identity:compartment:id

@@ -6,15 +6,6 @@ locals {
   container_dynamic_group_matching_rule = "ALL {resource.type = 'computecontainerinstance', resource.compartment.id = '${var.compartment_ocid}'}"
 }
 
-locals {
-  image_map = {
-    "Oracle Linux 9" = "ocid1.image.oc1.iad.aaaaaaaaglxne5nh73mxqppl3fkzkqdlda3k22y6oyxcvy6gcaxxsym54mca"
-    "Ubuntu 24.04"   = "ocid1.image.oc1.iad.aaaaaaaa5m2iw4g2glbqb2pzua2kyumj56j2zvzhusmbkqumcluf4oxh3dia"
-  }
-
-  selected_image_ocid = local.image_map[var.image_id]
-}
-
 module "app_dynamic_group" {
   source = "./modules/dynamic-group"
   tenancy_ocid   = var.tenancy_ocid
@@ -120,7 +111,7 @@ module "vm_instances" {
       display_name        = "${var.display_name_prefix}_testvm-1"
       availability_domain = var.availability_domain
       shape               = var.instance_shape
-      image_id            = local.selected_image_ocid
+      image_id            = var.image_id
       subnet_id           = var.subnet_id
       ocpus               = 2
       memory_in_gbs       = 16
@@ -131,7 +122,7 @@ module "vm_instances" {
       display_name        = "${var.display_name_prefix}_testvm-2"
       availability_domain = var.availability_domain
       shape               = var.instance_shape
-      image_id            = local.selected_image_ocid
+      image_id            = var.image_id
       subnet_id           = var.subnet_id
       ocpus               = 2
       memory_in_gbs       = 16

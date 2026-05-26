@@ -208,11 +208,15 @@ You will need:
         * Subnet for Application UI (**Public Subnet Preferred**)
         * Regional GenAI Endpoint (**Defaults to Ashburn, change if needed.**)
         * GenAI Model ID (**Defaults to xAI.Grok.4.3, change if needed.**)
+        **`Next`** If you are deploying in a region other than Ashburn, please make sure that the AI Model defined here is available in the region. Use following URL to validate the endpoint and models by region. 
+
+        [Generative AI Models by Region](https://docs.oracle.com/en-us/iaas/Content/generative-ai/model-endpoint-regions.htm)
+
     * click `Next`
     * select `Run apply`
     * click `Create`
-2. Wait for the stack deployment to complete successfully.
-3. After deployment, validate the container information
+1. Wait for the stack deployment to complete successfully.
+2. After deployment, validate the container information
    1. View Application container instance IP address
    2. Open a new browser window to the following address
       1. http://**application server public IP**:8080
