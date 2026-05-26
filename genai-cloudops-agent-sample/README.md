@@ -21,33 +21,33 @@ The solution deploys:
 
 The repository is structured as a Terraform-based deployment project combined with containerized application services.
 
-* **`infra-stack/`**: 
-  * **`kb_file`**: Sample process document for handling high cpu usage alerts.
-  * **`modules`**: Reusable Terraform modules.
-  * **`CloudOps_Infra_RMS`**.zip: Complete Resource Manager stack to deploy solution infrastructure components.
-  * **`main.tf`**: Main Terraform file that sets up the infrastructure components.
-  * **`output.tf`**: Output Terraform file to record output variables for other RMS stack.
-  * **`schema.yaml`**: OCI Resource Manager schema for guided deployment.
-  * **`variable.tf`**: Configure the OCI variables for the infrastructure components.
-* **`container_images/`**:
-  * **`MCP_Server/`**:
-    * **`app.py`**: Application file for the MCP server.
-    * **`Dockerfile`**: Main docker file to create the application container image:
-    * **`README.md`**: Sample readme file for isolated instance deployment.
-    * **`requirements.txt`**: Requirements file for python packages needed for the deployment.
-  * **`Agent and UI/`**:
-    * **`app.py`**: Application file for the frontend server.
-    * **`Dockerfile`**: Main docker file to create the application container image:
-    * **`README.md`**: Sample readme file for isolated instance deployment.
-    * **`requirements.txt`**: Requirements file for python packages needed for the deployment.
-  * **`README.md`**: Instructions file to create and store the container images in OCIR created in last deployment step.
-* **`container-instances-stack/`**: 
-  * **`modules`**: Reusable Terraform modules.
-  * **`Container_Instance_RMS.zip`**: Complete Resource Manager stack to deploy MCP and frontend application container instances.
-  * **`main.tf`**: Main Terraform file that sets up the container instances.
-  * **`schema.yaml`**: OCI Resource Manager schema for guided deployment.
-  * **`variable.tf`**: Configure the OCI variables for the infrastructure components.
-  * **`version.tf`**: Terraform file that controls the TF provider version for OCI.
+* `infra-stack/`: 
+  * `kb_file`: Sample process document for handling high cpu usage alerts.
+  * `modules`: Reusable Terraform modules.
+  * `CloudOps_Infra_RMS`.zip: Complete Resource Manager stack to deploy solution infrastructure components.
+  * `main.tf`: Main Terraform file that sets up the infrastructure components.
+  * `output.tf`: Output Terraform file to record output variables for other RMS stack.
+  * `schema.yaml`: OCI Resource Manager schema for guided deployment.
+  * `variable.tf`: Configure the OCI variables for the infrastructure components.
+* `container_images/`:
+  * `MCP_Server/`:
+    * `app.py`: Application file for the MCP server.
+    * `Dockerfile`: Main docker file to create the application container image:
+    * `README.md`: Sample readme file for isolated instance deployment.
+    * `requirements.txt`: Requirements file for python packages needed for the deployment.
+  * `Agent and UI/`:
+    * `app.py`: Application file for the frontend server.
+    * `Dockerfile`: Main docker file to create the application container image:
+    * `README.md`: Sample readme file for isolated instance deployment.
+    * `requirements.txt`: Requirements file for python packages needed for the deployment.
+  * `README.md`: Instructions file to create and store the container images in OCIR created in last deployment step.
+* `container-instances-stack/`:
+  * `modules`: Reusable Terraform modules.
+  * `Container_Instance_RMS.zip`: Complete Resource Manager stack to deploy MCP and frontend application container instances.
+  * `main.tf`: Main Terraform file that sets up the container instances.
+  * `schema.yaml`: OCI Resource Manager schema for guided deployment.
+  * `variable.tf`: Configure the OCI variables for the infrastructure components.
+  * `version.tf`: Terraform file that controls the TF provider version for OCI.
 
 The solution works as follows:
 
@@ -72,22 +72,26 @@ The solution is deployed in three steps.
 1. Clone the repository from GitHub.
 2. Use Oracle Resource Manager to create and apply the stack.
     * using the hamburger menu, go to Oracle Resource Manager
-    * choose **Stacks**
-    * click **Create stack**
-    * select **My configuration**
-    * in the configuration section select zip
-    * upload the **cloudops-infra-rms.zip** from the repository
+    * choose `Stacks`
+    * click `Create stack`
+    * select `My configuration`
+    * in the configuration section select folder
+    * upload the `infrastructure-stack` from the repository
     * provide a meaningful stack name
-    * click **Next**
-    * choose the target **compartment**
+    * click `Next`
+    * choose the target `compartment`
     * provide the required variables:
+        * Display name prefix
+        * Component description
+        * Availability Domain
+        * Instance Shape
+        * Image ID
+        * VCN Compartment
         * VCN and subnet information
         * SSH public key
-        * compartment OCIDs
-        * region configuration
-    * click **Next**
-    * select **Run apply**
-    * click **Create**
+    * click `Next`
+    * select `Run apply`
+    * click `Create`
 3. Wait for the stack deployment to complete successfully.
 4. After deployment, collect the outputs from the stack:
     * MCP OCIR repository path
@@ -122,8 +126,11 @@ The solution uses two container images:
     **Use**:
       - OCI Username
       - OCI auth token
-
-2. Build and Push MCP Server Image
+2. Navigate to the instance-image directory:
+      ~~~
+      cd instance-images
+      ~~~
+3. Build and Push MCP Server Image
    1. Navigate to the MCP Server directory:
         ~~~
         cd mcp-server
@@ -136,16 +143,16 @@ The solution uses two container images:
         ~~~
         docker push <mcp-repository-path>:latest
         ~~~
-3. Build and Push Application Server Image
+4. Build and Push Application Server Image
     1. Navigate to the Application Server directory:
         ~~~
-        cd agent-and-ui
+        cd ui-server
         ~~~
     2. Build and tag the mcp server image
         ~~~
         docker build . -t 'application-server-repository-path':latest
         ~~~
-    1. Push the application server image
+    3. Push the application server image
         ~~~
         docker push 'application-server-repository-path':latest
         ~~~
@@ -166,10 +173,10 @@ You will need:
 
 - MCP Server
     - Deploy in:
-      - **Private subnet**
+      - `Private subnet`
 - Application Server
   - Deploy in:
-    - **Public subnet**
+    - `Public subnet`
   - Expose:
     - **TCP Port 8080**
 
@@ -177,30 +184,33 @@ You will need:
 
 1. Use Oracle Resource Manager to create and apply the stack.
     * using the hamburger menu, go to Oracle Resource Manager
-    * choose **Stacks**
-    * click **Create stack**
-    * select **My configuration**
-    * in the configuration section select zip
-    * upload the **container-instance-rms.zip** from the repository
+    * choose `Stacks`
+    * click `Create stack`
+    * select `My configuration`
+    * in the configuration section select folder
+    * upload the `container-instance-stack` from the repository
     * provide a meaningful stack name
-    * click **Next**
-    * choose the target **compartment**
+    * click `Next`
+    * choose the target `compartment`
     * provide the required variables:
         * Display Name Prefix
         * Availability Domain
-        * MCP Container Image URL from last step
-        * Application Container Image URL from last step
-        * RAG Agent Endpoint
         * Container Configuration
           * Shape
           * OCPU
           * Memory
-        * VCN and subnet information
-        * Regional GenAI Endpoint
-        * GenAI Model ID
-    * click **Next**
-    * select **Run apply**
-    * click **Create**
+        * VCN information.
+        * MCP Container Image URL from last section.
+        * Subnet for MCP Container (**Private Subnet Preferred**)
+        * Skip Assigning a Public IP
+        * RAG Agent endpoint from first stack deployment.
+        * Application Container image URL from last section.
+        * Subnet for Application UI (**Public Subnet Preferred**)
+        * Regional GenAI Endpoint (**Defaults to Ashburn, change if needed.**)
+        * GenAI Model ID (**Defaults to xAI.Grok.4.3, change if needed.**)
+    * click `Next`
+    * select `Run apply`
+    * click `Create`
 2. Wait for the stack deployment to complete successfully.
 3. After deployment, validate the container information
    1. View Application container instance IP address

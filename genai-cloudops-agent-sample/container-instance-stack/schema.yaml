@@ -182,7 +182,7 @@ variables:
     title: OCI GenAI Model ID
     description: OCI GenAI model ID to use for the agent application server.
     required: true  
-    default: openai.gpt-oss-120b
+    default: xai.grok-4.3
 
   appassign_public_ip:
     type: boolean
