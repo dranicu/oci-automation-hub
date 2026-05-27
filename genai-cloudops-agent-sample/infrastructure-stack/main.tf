@@ -12,6 +12,7 @@ module "app_dynamic_group" {
   name           = "${var.display_name_prefix}_dynamic_group"
   description    = "${var.component_description} - Dynamic Group"
   matching_rule  = local.app_dynamic_group_matching_rule
+  region = var.region
 }
 
 module "app_iam_policy" {
@@ -34,6 +35,7 @@ module "container_dynamic_group" {
   name           = "${var.display_name_prefix}_container_dynamic_group"
   description    = "${var.component_description} - Container Dynamic Group"
   matching_rule  = local.container_dynamic_group_matching_rule
+  region = var.region
 }
 
 module "container_iam_policy" {

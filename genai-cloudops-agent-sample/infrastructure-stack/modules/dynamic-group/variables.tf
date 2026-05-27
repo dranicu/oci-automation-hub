@@ -4,6 +4,10 @@ variable "tenancy_ocid" {
   description = "OCI Tenancy Id, the Dynamic Group will be created at the tenancy level."
   type = string
 }
+variable "region" {
+  description = "OCI Region where the Dynamic Group will be created."
+  type = string
+}
 
 variable "name" {
   description = "Dynamic group name. Must be unique across the tenancy and cannot be changed later."
