@@ -1,93 +1,70 @@
 # Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
 # The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
-#############################
-# OCI Provider Configuration
-#############################
-
-variable "region" {
-  description = "OCI region where resources will be created."
-  type        = string
-}
-
 variable "tenancy_ocid" {
-  description = "OCI tenancy OCID. Can be supplied via TF_VAR_tenancy_ocid or environment."
+  description = "OCI Tenancy OCID."
   type        = string
 }
-
-variable "compartment_ocid"{
-    description = "OCI compartment OCID where resources will be created. Can be supplied via TF_VAR_compartment_ocid or environment."
-    type        = string
-}
-
-variable "display_name_prefix" {
-  description = "Prefix for all the components deployed by the stack."
-  type = string
-}
-
-variable "availability_domain" {
-  description = "Availability domain where the container instance will run."
+variable "identity_domain_ocid" {
+  description = "OCI Identity Domain OCID, for example ocid1.identity.oc1..aaaaaaaamjlz5jgh7uspm7h6cppdgrmlj76r7232737dsom4flwq2m4w723a."
   type        = string
 }
-
 variable "mcp_container_image_url" {
-  description = "Container image URL, for example iad.ocir.io/namespace/repo:tag or docker.io/library/nginx:latest."
+  description = "Container image URL for the MCP server instance, for example iad.ocir.io/namespace/repository:tag."
   type        = string
 }
-
-variable "app_container_image_url" {
-  description = "Container image URL, for example iad.ocir.io/namespace/repo:tag or docker.io/library/nginx:latest."
-  type        = string
-}
-
 variable "rag_agent_endpoint_id" {
-  type = string
   description = "Agent Endpoint OCID for the RAG agent to connect to."
+  type        = string
 }
-
 variable "shape" {
   description = "Container instance shape. Use a flexible shape supported by Container Instances."
   type        = string
-  default     = "CI.Standard.E4.Flex"
 }
-
 variable "ocpus" {
   description = "Number of OCPUs to allocate to the container instance."
   type        = number
 }
-
 variable "memory_in_gbs" {
   description = "Amount of memory in GB to allocate to the container instance."
   type        = number
 }
 
-variable "mcpsubnet_id" {
-  description = "Subnet OCID for the container instance VNIC."
+variable "region" {
+  description = "OCI region where the resources will be deployed."
   type        = string
 }
 
-variable "appsubnet_id" {
-  description = "Subnet OCID for the application instance VNIC."
+variable "compartment_ocid" {
+  description = "Compartment OCID where resources will be created."
   type        = string
 }
 
-variable "appassign_public_ip" {
-  description = "Assign Public IP to the application container"
-  type = bool
-  default = true
-}
-
-variable "oci_genai_endpoint" {
-  description = "OCI GenAI endpoint URL for the RAG agent to connect to, for example https://genai.us-phoenix-1.oci.oraclecloud.com."
-  type        = string
-  default = "https://inference.generativeai.us-ashburn-1.oci.oraclecloud.com"
-}
-
-variable "oci_genai_model_id" {
-  description = "OCI GenAI model ID for the RAG agent to use, for example 'gpt-4o'."
+variable "availability_domain" {
+  description = "Availability domain name, for example liOm:US-ASHBURN-AD-1."
   type        = string
 }
 
-variable "mcpassign_public_ip" {
-  description = "Whether to assign a public IP to the container instance VNIC."
+variable "lb_subnet_id" {
+  description = "Public subnet OCID used by the load balancer and Container Instance VNIC."
+  type        = string
+}
+
+variable "app_subnet_id" {
+  description = "Subnet OCID used by the application Container Instance VNIC."
+  type        = string
+}
+
+variable "app_name_prefix" {
+  description = "Base name used for deployed OCI resources."
+  type        = string
+}
+
+variable "app_image_url" {
+  description = "Full container image URL to deploy, for example iad.ocir.io/namespace/repository:tag."
+  type        = string
+}
+variable "assign_public_ip" {
+  description = "Whether to assign a public IP to the application container instance VNIC."
   type        = bool
+  default     = false
 }

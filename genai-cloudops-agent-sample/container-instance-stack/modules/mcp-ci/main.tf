@@ -31,6 +31,7 @@ resource "oci_container_instances_container_instance" "this" {
     environment_variables = {
         TENANCY_OCID     = var.tenancy_ocid
         AGENT_ENDPOINT_ID   = var.rag_agent_endpoint_id != null ? var.rag_agent_endpoint_id : "NONE"
+        LOG_LEVEL                  = "DEBUG"
     }
 
     dynamic "health_checks" {

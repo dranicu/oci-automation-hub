@@ -12,13 +12,17 @@ locale: "en"
 variableGroups:
   - title: Core
     variables:
-      - ${display_name_prefix}
+      - ${app_name_prefix}
       - ${compartment_ocid}
       - ${availability_domain}
       - ${region}
       - ${tenancy_ocid}
 
-  - title: Compute
+  - title: Identity Integrated Application
+    variables:
+      - ${identity_domain_ocid}
+
+  - title: Common Compute and Network Configuration
     variables:
       - ${shape}
       - ${ocpus}
@@ -26,27 +30,20 @@ variableGroups:
       - ${vcnCompartment}
       - ${vcn_id}
 
+  - title: Load Balancer Configuration
+    variables:
+      - ${lb_subnet_id}
 
   - title: MCP Container Configuration
     variables:
       - ${mcp_container_image_url}
-      - ${mcpsubnet_id}
-      - ${mcpassign_public_ip}
-
-  - title: MCP Server Configuration
-    variables:
+      - ${app_subnet_id}
       - ${rag_agent_endpoint_id}
 
   - title: Application Container Configuration
     variables:
-      - ${app_container_image_url}
-      - ${appsubnet_id}
-      - ${appassign_public_ip}
-
-  - title: Agent Application Server Configuration
-    variables:
-      - ${oci_genai_endpoint}
-      - ${oci_genai_model_id}
+      - ${app_image_url}
+      - ${app_subnet_id}
 
 variables:
   tenancy_ocid:
@@ -55,6 +52,14 @@ variables:
     description: OCI tenancy OCID (used only for provider configuration if needed).
     visible: false
     required: true
+  
+  identity_domain_ocid:
+    type: oci:identity:domains:id
+    title: Identity Domain to create the integrated application.
+    description: OCI Identity Domain OCID, for example ocid1.identity.oc1..aaaaaaaamjlz5jgh7uspm7h6cppdgrmlj76r7232737dsom4flwq2m4w723a.
+    required: true
+    dependsOn:
+      compartmentId: ${tenancy_ocid}
 
   region:
     type: oci:identity:region:name
@@ -78,7 +83,7 @@ variables:
     dependsOn:
       compartmentId: ${compartment_ocid}
 
-  display_name_prefix:
+  app_name_prefix:
     type: string
     title: Display Name Prefix
     description: Prefix for the display names of the created resources.
@@ -91,18 +96,17 @@ variables:
     description: Container image URL, for example iad.ocir.io/namespace/repo:tag or docker.io/library/nginx:latest.
     required: true
   
-  app_container_image_url:
+  app_image_url:
     type: string
     title: Container Image URL for Application Container
     description: Container image URL, for example iad.ocir.io/namespace/repo:tag or docker.io/library/nginx:latest.
     required: true
   
-  
   rag_agent_endpoint_id:
     type: string
-    title: RAG Agent Endpoint ID
+    title: RAG Agent Endpoint ID (Optional)
     description: RAG Agent Endpoint ID to connect the MCP server to (optional).
-    required: true
+    required: false
     default: ""
 
   shape:
@@ -129,7 +133,7 @@ variables:
     title: Memory (GB)
     description: Amount of memory in GB to allocate to the container instance.
     required: true
-    default: 2
+    default: 6
 
   vcnCompartment:
     type: oci:identity:compartment:id
@@ -144,50 +148,28 @@ variables:
     dependsOn:
       compartmentId: ${vcnCompartment}
 
-  mcpsubnet_id:
+  lb_subnet_id:
     type: oci:core:subnet:id
     title: Subnet ID
-    description: Subnet for the MCP Container Instance.
+    description: Subnet for the load balancer.
     required: true
     dependsOn:
       compartmentId: ${vcnCompartment}
       vcnId: ${vcn_id}
 
-  mcpassign_public_ip:
-    type: boolean
-    title: Assign Public IP
-    description: Whether to assign a public IP to the container instance VNIC.
-    required: true
-    default: false
-    visible: true
-
-  appsubnet_id:
+  app_subnet_id:
     type: oci:core:subnet:id
     title: Subnet ID
-    description: Subnet for the application container instance. Select from the drop-down.
+    description: Subnet for the application and MCP container instance. Select from the drop-down.
     required: true
     dependsOn:
       compartmentId: ${vcnCompartment}
       vcnId: ${vcn_id}
-  
-  oci_genai_endpoint:
-    type: string
-    title: OCI GenAI Endpoint
-    description: OCI GenAI endpoint URL for the agent application server to connect to (optional).
-    required: true
-    default: "https://inference.generativeai.us-ashburn-1.oci.oraclecloud.com"
 
-  oci_genai_model_id:
-    type: string
-    title: OCI GenAI Model ID
-    description: OCI GenAI model ID to use for the agent application server.
-    required: true  
-    default: xai.grok-4.3
-
-  appassign_public_ip:
+  assign_public_ip:
     type: boolean
     title: Assign Public IP
     description: Whether to assign a public IP to the Application container instance VNIC.
     required: true
-    default: true
-    visible: true
+    default: false
+    visible: false

@@ -24,26 +24,31 @@ The repository is structured as a Terraform-based deployment project combined wi
 * `infra-stack/`: 
   * `kb_file`: Sample process document for handling high cpu usage alerts.
   * `modules`: Reusable Terraform modules.
-  * `CloudOps_Infra_RMS`.zip: Complete Resource Manager stack to deploy solution infrastructure components.
   * `main.tf`: Main Terraform file that sets up the infrastructure components.
   * `output.tf`: Output Terraform file to record output variables for other RMS stack.
   * `schema.yaml`: OCI Resource Manager schema for guided deployment.
   * `variable.tf`: Configure the OCI variables for the infrastructure components.
-* `container_images/`:
-  * `MCP_Server/`:
+* `instance_images/`:
+  * `mcp-server/`:
     * `app.py`: Application file for the MCP server.
     * `Dockerfile`: Main docker file to create the application container image:
     * `README.md`: Sample readme file for isolated instance deployment.
     * `requirements.txt`: Requirements file for python packages needed for the deployment.
-  * `Agent and UI/`:
+  * `ui-server/`:
+    * `backend/`: Applicatino backend files to handle authentication, agent configuration, storage configuration etc.
+    * `certs/`: Local application certificates.
+    * `deploy/`: Terraform modules for standalone application development.
+    * `frontend/`: Application UI.
+    * `scripts/`: Shell Scripts to setup application for local deployment.
     * `app.py`: Application file for the frontend server.
+    * `build_spec.yaml`: Container build specifications.
+    * `docker-compose.yml`: Docker Compose configurations.
     * `Dockerfile`: Main docker file to create the application container image:
     * `README.md`: Sample readme file for isolated instance deployment.
     * `requirements.txt`: Requirements file for python packages needed for the deployment.
   * `README.md`: Instructions file to create and store the container images in OCIR created in last deployment step.
 * `container-instances-stack/`:
   * `modules`: Reusable Terraform modules.
-  * `Container_Instance_RMS.zip`: Complete Resource Manager stack to deploy MCP and frontend application container instances.
   * `main.tf`: Main Terraform file that sets up the container instances.
   * `schema.yaml`: OCI Resource Manager schema for guided deployment.
   * `variable.tf`: Configure the OCI variables for the infrastructure components.
@@ -61,9 +66,22 @@ The solution works as follows:
 
 # Solution Deployment
 The solution is deployed in three steps. 
+
 1. Deploy the Infrastructure Stack
 2. Build and Push the MCP Server and Application container images.
 3. Deploy the Container Instance Stack
+
+## Prerequisites
+
+* Docker installed on the workstation
+* Access to OCI Container Registry (OCIR)
+* Auth token for OCI registry login
+* Existing VCN with Public and Private Subnets
+  * Public Subnet
+    * Should have port **443** allowed for LB Listener Deployment
+  * Private Subnet
+    * Should have port **8000** allowed from public subnet for LB to Application Communication
+    * Should have port **8080** allowed for Application Container to MCP Server Communication
 
 ## Part 1: Deploy the Infrastructure Stack
 
@@ -71,16 +89,16 @@ The solution is deployed in three steps.
 
 1. Clone the repository from GitHub.
 2. Use Oracle Resource Manager to create and apply the stack.
-    * using the hamburger menu, go to Oracle Resource Manager
-    * choose `Stacks`
-    * click `Create stack`
-    * select `My configuration`
-    * in the configuration section select folder
-    * upload the `infrastructure-stack` from the repository
-    * provide a meaningful stack name
-    * click `Next`
-    * choose the target `compartment`
-    * provide the required variables:
+    * Using the hamburger menu, go to Oracle Resource Manager
+    * Choose `Stacks`
+    * Click `Create stack`
+    * Select `My configuration`
+    * In the configuration section select folder
+    * Upload the `infrastructure-stack` from the repository
+    * Provide a meaningful stack name
+    * Click `Next`
+    * Choose the target `compartment`
+    * Provide the required variables:
         * Display name prefix
         * Component description
         * Availability Domain
@@ -89,9 +107,9 @@ The solution is deployed in three steps.
         * VCN Compartment
         * VCN and subnet information
         * SSH public key
-    * click `Next`
-    * select `Run apply`
-    * click `Create`
+    * Click `Next`
+    * Select `Run apply`
+    * Click `Create`
 3. Wait for the stack deployment to complete successfully, Gen AI Agent creation and Document ingestion can take over 30 minutes depending on the region you are deploying in.
 4. After deployment, collect the outputs from the stack:
     * MCP OCIR repository path
@@ -176,50 +194,47 @@ You will need:
       - `Private subnet`
 - Application Server
   - Deploy in:
+    - `Private subnet`
+- Load Balancer
+  - Deploy in:
     - `Public subnet`
-  - Expose:
-    - **TCP Port 8080**
 
 ### Deploy with OCI Resource Manager
 
 1. Use Oracle Resource Manager to create and apply the stack.
-    * using the hamburger menu, go to Oracle Resource Manager
-    * choose `Stacks`
+    * Using the hamburger menu, go to Oracle Resource Manager
+    * Choose `Stacks`
     * click `Create stack`
-    * select `My configuration`
-    * in the configuration section select folder
-    * upload the `container-instance-stack` from the repository
-    * provide a meaningful stack name
-    * click `Next`
-    * choose the target `compartment`
-    * provide the required variables:
-        * Display Name Prefix
-        * Availability Domain
+    * Select `My configuration`
+    * In the configuration section select folder
+    * Upload the `container-instance-stack` directory from the repository
+    * Provide a meaningful stack name
+    * Click `Next`
+    * Provide the `Display Name Prefix`.
+    * Choose the target `compartment`
+    * Choose the Availability Domain for the container instance deployment.
+    * Select the `Identity Domain` to create the Integrated Application for application authentication.
+    * Provide the required variables for Container Instance deployment:
         * Container Configuration
           * Shape
           * OCPU
           * Memory
         * VCN information.
-        * MCP Container Image URL from last section.
-        * Subnet for MCP Container (**Private Subnet Preferred**)
-        * Skip Assigning a Public IP
+        * VCN Name
+        * Subnet for Load Balancer Deployment (**Public Subnet Preferred**)
+        * MCP Container Image URL from last step.
+        * Subnet for MCP Server Deployment (**Private Subnet Preferred**)
         * RAG Agent endpoint from first stack deployment.
-        * Application Container image URL from last section.
-        * Subnet for Application UI (**Public Subnet Preferred**)
-        * Regional GenAI Endpoint (**Defaults to Ashburn, change if needed.**)
-        * GenAI Model ID (**Defaults to xAI.Grok.4.3, change if needed.**)
-        **`Next`** If you are deploying in a region other than Ashburn, please make sure that the AI Model defined here is available in the region. Use following URL to validate the endpoint and models by region. 
-
-        [Generative AI Models by Region](https://docs.oracle.com/en-us/iaas/Content/generative-ai/model-endpoint-regions.htm)
-
-    * click `Next`
-    * select `Run apply`
-    * click `Create`
-1. Wait for the stack deployment to complete successfully.
-2. After deployment, validate the container information
-   1. View Application container instance IP address
+        * Application Container image URL from last step.
+        * Subnet for Application UI (**Private Subnet Preferred**)
+    * Click `Next`
+    * Select `Run apply`
+    * Click `Create`
+2. Wait for the stack deployment to complete successfully.
+3. After deployment, validate the load balancer information
+   1. Check the public IP address of the load balancer.
    2. Open a new browser window to the following address
-      1. http://**application server public IP**:8080
+      1. https://**Load Balancer Public IP**
 
 # Post-Installation
 
