@@ -53,6 +53,9 @@ jobs:
               *.html)
                 PREFIX="HTML"
                 ;;
+              *.js|*.css)
+                PREFIX="BLOCK"
+                ;;
               *.sql)
                 PREFIX="--"
                 ;;
@@ -64,6 +67,9 @@ jobs:
             if [[ "$PREFIX" == "HTML" ]]; then
               LINE1="<!-- ${LICENSE_TEXT_COPYRIGHT} -->"
               LINE2="<!-- ${LICENSE_TEXT_UPL} -->"
+            elif [[ "$PREFIX" == "BLOCK" ]]; then
+              LINE1="/* ${LICENSE_TEXT_COPYRIGHT} */"
+              LINE2="/* ${LICENSE_TEXT_UPL} */"
             else
               LINE1="${PREFIX} ${LICENSE_TEXT_COPYRIGHT}"
               LINE2="${PREFIX} ${LICENSE_TEXT_UPL}"
