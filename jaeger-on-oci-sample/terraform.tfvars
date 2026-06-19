@@ -123,10 +123,10 @@ sl_params = {
 
 linux_images = {
   eu-frankfurt-1 = {
-    oel9 = "ocid1.image.oc1.eu-frankfurt-1.example" # CHANGE-ME: Oracle Linux 9 image OCID for this region
+    oel9 = "ocid1.image.oc1.eu-frankfurt-1.aaaaaaaap6fyk44edftzyywudj4ofztrjsq7d47qtslsd74rlzlm3hu52xca" #Oracle-Linux-9.6-2025.11.20-0
   }
   us-ashburn-1 = {
-    oel9 = "ocid1.image.oc1.iad.example" # CHANGE-ME: Oracle Linux 9 image OCID for this region
+    oel9 = "ocid1.image.oc1.iad.aaaaaaaaglxne5nh73mxqppl3fkzkqdlda3k22y6oyxcvy6gcaxxsym54mca"
   }
 }
 
