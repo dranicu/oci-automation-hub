@@ -1,0 +1,473 @@
+#!/bin/bash
+
+# Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
+# The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
+
+set -euo pipefail
+
+registry="${registry}"
+region="${region}"
+
+echo "Using OCIR registry: ${registry}"
+echo "Using OCI region: ${region}"
+echo "Default validation engines: ${validation_engines}"
+
+until curl -s "https://yum.$${region}.oci.oraclecloud.com" >/dev/null; do
+  echo "Waiting for network..."
+  sleep 5
+done
+
+# --- OL9 prep ---
+dnf -y install git dnf-plugins-core curl tar gzip java-17-openjdk-headless
+dnf -y remove podman-docker || true
+
+# --- Install docker ---
+
+# add Docker repository
+dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+
+# install Docker Engine
+dnf -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+# start Docker service
+systemctl enable --now docker   
+# verify installation
+docker version
+docker compose version
+# add user to docker group
+usermod -aG docker opc
+
+if [[ ",${validation_engines}," == *",trino,"* ]]; then
+  docker pull trinodb/trino:latest
+fi
+
+# --- Install OCI and AWS CLIs ---
+# install OCI CLI using pip 
+dnf -y install python3 python3-pip
+pip3 install oci-cli awscli
+# verify installation
+oci --version
+aws --version
+
+# verify instance principal works
+oci iam region list --auth instance_principal || echo "Instance principal not working"
+
+# --- Install Spark runtime ---
+SPARK_VERSION="3.5.1"
+SPARK_PACKAGE="spark-$${SPARK_VERSION}-bin-hadoop3"
+SPARK_ARCHIVE="/tmp/$${SPARK_PACKAGE}.tgz"
+
+if [ ! -d "/opt/$${SPARK_PACKAGE}" ]; then
+  curl -fL "https://archive.apache.org/dist/spark/spark-$${SPARK_VERSION}/$${SPARK_PACKAGE}.tgz" -o "$${SPARK_ARCHIVE}"
+  tar -xzf "$${SPARK_ARCHIVE}" -C /opt
+fi
+
+ln -sfn "/opt/$${SPARK_PACKAGE}" /opt/spark
+cat >/etc/profile.d/spark.sh <<'EOF'
+export SPARK_HOME=/opt/spark
+export PATH=$SPARK_HOME/bin:$PATH
+EOF
+
+# --- Hive Metastore + backing database ---
+mkdir -p /opt/iceberg
+mkdir -p /opt/iceberg/jars
+curl -fL https://jdbc.postgresql.org/download/postgresql-42.7.4.jar -o /opt/iceberg/jars/postgresql.jar
+
+cat >/opt/iceberg/docker-compose.yml <<'EOF'
+services:
+  postgres:
+    image: postgres:16
+    container_name: iceberg-hms-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: metastore
+      POSTGRES_USER: hive
+      POSTGRES_PASSWORD: hive
+    volumes:
+      - hms_postgres:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hive -d metastore"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  hive-metastore:
+    image: apache/hive:4.0.0
+    container_name: iceberg-hive-metastore
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SERVICE_NAME: metastore
+      DB_DRIVER: postgres
+      SERVICE_OPTS: >-
+        -Djavax.jdo.option.ConnectionURL=jdbc:postgresql://postgres:5432/metastore
+        -Djavax.jdo.option.ConnectionDriverName=org.postgresql.Driver
+        -Djavax.jdo.option.ConnectionUserName=hive
+        -Djavax.jdo.option.ConnectionPassword=hive
+        -Dhive.metastore.warehouse.dir=s3a://warehouse/
+    ports:
+      - "127.0.0.1:9083:9083"
+    volumes:
+      - /opt/iceberg/jars/postgresql.jar:/opt/hive/lib/postgresql.jar:ro
+
+volumes:
+  hms_postgres:
+EOF
+
+cat >/etc/systemd/system/iceberg-hms.service <<'EOF'
+[Unit]
+Description=Iceberg Hive Metastore stack
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/iceberg
+ExecStart=/usr/bin/docker compose up -d
+ExecStop=/usr/bin/docker compose down
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable --now iceberg-hms.service
+
+# --- Spark launcher for Iceberg against OCI Object Storage + JDBC catalog ---
+cat >/opt/iceberg/spark-sql-oci.sh <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+: "$${OCI_ACCESS_KEY_ID:?Set OCI_ACCESS_KEY_ID}"
+: "$${OCI_SECRET_ACCESS_KEY:?Set OCI_SECRET_ACCESS_KEY}"
+
+ICEBERG_VERSION="$${ICEBERG_VERSION:-1.10.1}"
+JDBC_CATALOG_URI="$${JDBC_CATALOG_URI:-jdbc:postgresql://127.0.0.1:5432/metastore}"
+JDBC_CATALOG_USER="$${JDBC_CATALOG_USER:-hive}"
+JDBC_CATALOG_PASSWORD="$${JDBC_CATALOG_PASSWORD:-hive}"
+OCI_REGION="$${OCI_REGION:-${region}}"
+
+if [ -z "$${OCI_S3_ENDPOINT:-}" ]; then
+  OCI_NAMESPACE="$${OCI_NAMESPACE:-$(oci os ns get --auth instance_principal --query data --raw-output)}"
+  OCI_S3_ENDPOINT="https://$${OCI_NAMESPACE}.compat.objectstorage.$${OCI_REGION}.oci.customer-oci.com"
+fi
+
+exec /opt/spark/bin/spark-sql \
+  --jars /opt/iceberg/jars/postgresql.jar \
+  --packages "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:$${ICEBERG_VERSION},org.apache.iceberg:iceberg-aws-bundle:$${ICEBERG_VERSION}" \
+  --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
+  --conf spark.sql.catalog.oci=org.apache.iceberg.spark.SparkCatalog \
+  --conf spark.sql.catalog.oci.type=jdbc \
+  --conf spark.sql.catalog.oci.uri="$${JDBC_CATALOG_URI}" \
+  --conf spark.sql.catalog.oci.jdbc.user="$${JDBC_CATALOG_USER}" \
+  --conf spark.sql.catalog.oci.jdbc.password="$${JDBC_CATALOG_PASSWORD}" \
+  --conf spark.sql.catalog.oci.warehouse="s3://$${BUCKET:-iceberg-table-demo}/lakehouse" \
+  --conf spark.sql.catalog.oci.io-impl=org.apache.iceberg.aws.s3.S3FileIO \
+  --conf spark.sql.catalog.oci.s3.endpoint="$${OCI_S3_ENDPOINT}" \
+  --conf spark.sql.catalog.oci.s3.path-style-access=true \
+  --conf spark.sql.catalog.oci.client.region="$${OCI_REGION}" \
+  --conf spark.sql.catalog.oci.s3.access-key-id="$${OCI_ACCESS_KEY_ID}" \
+  --conf spark.sql.catalog.oci.s3.secret-access-key="$${OCI_SECRET_ACCESS_KEY}" \
+  "$@"
+EOF
+
+chmod +x /opt/iceberg/spark-sql-oci.sh
+
+# --- Realistic AWS S3 simulation using local MinIO + real Iceberg files ---
+cat >/opt/iceberg/generate-simulated-aws-iceberg-table.sh <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+BUCKET="$${BUCKET:-iceberg-table-demo}"
+TABLE_PREFIX="$${TABLE_PREFIX:-lakehouse/sales/orders}"
+CATALOG_WAREHOUSE_DIR="$${CATALOG_WAREHOUSE_DIR:-/opt/iceberg/aws_source_catalog}"
+CATALOG_WAREHOUSE="$${CATALOG_WAREHOUSE:-s3://$${BUCKET}/lakehouse}"
+JDBC_CATALOG_URI="$${JDBC_CATALOG_URI:-jdbc:postgresql://127.0.0.1:5432/metastore}"
+JDBC_CATALOG_USER="$${JDBC_CATALOG_USER:-hive}"
+JDBC_CATALOG_PASSWORD="$${JDBC_CATALOG_PASSWORD:-hive}"
+DATABASE="$${DATABASE:-sales}"
+TABLE="$${TABLE:-orders}"
+ICEBERG_VERSION="$${ICEBERG_VERSION:-1.10.1}"
+MINIO_ENDPOINT="$${MINIO_ENDPOINT:-http://127.0.0.1:9000}"
+MINIO_ACCESS_KEY="$${MINIO_ACCESS_KEY:-fakeaws}"
+MINIO_SECRET_KEY="$${MINIO_SECRET_KEY:-fakeawssecret}"
+EXPORT_ROOT="$${EXPORT_ROOT:-/opt/iceberg/generated_aws_source}"
+EXPORT_DIR="$${EXPORT_ROOT}/$${BUCKET}/$${TABLE_PREFIX}"
+
+mkdir -p /opt/iceberg/simulated-aws-s3
+mkdir -p "$${CATALOG_WAREHOUSE_DIR}"
+cat >/opt/iceberg/simulated-aws-s3/docker-compose.yml <<MINIO_EOF
+services:
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: simulated-aws-s3
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: $${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: $${MINIO_SECRET_KEY}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - simulated_aws_s3:/data
+
+volumes:
+  simulated_aws_s3:
+MINIO_EOF
+
+docker compose -f /opt/iceberg/simulated-aws-s3/docker-compose.yml up -d
+
+until curl -sf "$${MINIO_ENDPOINT}/minio/health/live" >/dev/null; do
+  echo "Waiting for simulated AWS S3..."
+  sleep 2
+done
+
+export AWS_ACCESS_KEY_ID="$${MINIO_ACCESS_KEY}"
+export AWS_SECRET_ACCESS_KEY="$${MINIO_SECRET_KEY}"
+export AWS_REGION="us-east-1"
+export AWS_DEFAULT_REGION="us-east-1"
+
+aws --endpoint-url "$${MINIO_ENDPOINT}" s3 mb "s3://$${BUCKET}" 2>/dev/null || true
+aws --endpoint-url "$${MINIO_ENDPOINT}" s3 rm "s3://$${BUCKET}/$${TABLE_PREFIX}" --recursive || true
+
+cat >/tmp/create-simulated-aws-iceberg-table.sql <<SQL_EOF
+CREATE NAMESPACE IF NOT EXISTS aws_source.$${DATABASE};
+
+DROP TABLE IF EXISTS aws_source.$${DATABASE}.$${TABLE};
+
+CREATE TABLE aws_source.$${DATABASE}.$${TABLE} (
+  order_id BIGINT,
+  customer_id STRING,
+  order_total DECIMAL(10,2),
+  order_date DATE
+)
+USING iceberg
+LOCATION 's3://$${BUCKET}/$${TABLE_PREFIX}';
+
+INSERT INTO aws_source.$${DATABASE}.$${TABLE} VALUES
+  (1001, 'CUST-001', CAST(125.50 AS DECIMAL(10,2)), DATE '2026-01-05'),
+  (1002, 'CUST-002', CAST(89.99 AS DECIMAL(10,2)), DATE '2026-01-06'),
+  (1003, 'CUST-003', CAST(240.00 AS DECIMAL(10,2)), DATE '2026-01-07');
+
+SELECT COUNT(*) AS row_count FROM aws_source.$${DATABASE}.$${TABLE};
+SQL_EOF
+
+/opt/spark/bin/spark-sql \
+  --jars /opt/iceberg/jars/postgresql.jar \
+  --packages "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:$${ICEBERG_VERSION},org.apache.iceberg:iceberg-aws-bundle:$${ICEBERG_VERSION}" \
+  --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
+  --conf spark.sql.catalog.aws_source=org.apache.iceberg.spark.SparkCatalog \
+  --conf spark.sql.catalog.aws_source.type=jdbc \
+  --conf spark.sql.catalog.aws_source.uri="$${JDBC_CATALOG_URI}" \
+  --conf spark.sql.catalog.aws_source.jdbc.user="$${JDBC_CATALOG_USER}" \
+  --conf spark.sql.catalog.aws_source.jdbc.password="$${JDBC_CATALOG_PASSWORD}" \
+  --conf spark.sql.catalog.aws_source.warehouse="$${CATALOG_WAREHOUSE}" \
+  --conf spark.sql.catalog.aws_source.io-impl=org.apache.iceberg.aws.s3.S3FileIO \
+  --conf spark.sql.catalog.aws_source.s3.endpoint="$${MINIO_ENDPOINT}" \
+  --conf spark.sql.catalog.aws_source.s3.path-style-access=true \
+  --conf spark.sql.catalog.aws_source.client.region="us-east-1" \
+  --conf spark.sql.catalog.aws_source.s3.access-key-id="$${MINIO_ACCESS_KEY}" \
+  --conf spark.sql.catalog.aws_source.s3.secret-access-key="$${MINIO_SECRET_KEY}" \
+  -f /tmp/create-simulated-aws-iceberg-table.sql
+
+rm -rf "$${EXPORT_DIR}"
+mkdir -p "$${EXPORT_DIR}"
+aws --endpoint-url "$${MINIO_ENDPOINT}" s3 sync "s3://$${BUCKET}/$${TABLE_PREFIX}/" "$${EXPORT_DIR}/"
+
+find "$${EXPORT_DIR}" -type f | sort
+echo
+echo "Generated real Iceberg source simulation at: $${EXPORT_DIR}"
+echo "Pretend source path: s3://$${BUCKET}/$${TABLE_PREFIX}/"
+EOF
+
+cat >/opt/iceberg/copy-simulated-source-to-oci.sh <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+BUCKET="$${BUCKET:-iceberg-table-demo}"
+TABLE_PREFIX="$${TABLE_PREFIX:-lakehouse/sales/orders}"
+EXPORT_ROOT="$${EXPORT_ROOT:-/opt/iceberg/generated_aws_source}"
+SOURCE_DIR="$${SOURCE_DIR:-$${EXPORT_ROOT}/$${BUCKET}/$${TABLE_PREFIX}}"
+OCI_REGION="$${OCI_REGION:-${region}}"
+OCI_CLI_AUTH="$${OCI_CLI_AUTH:-instance_principal}"
+
+if [ ! -d "$${SOURCE_DIR}" ]; then
+  echo "Missing source directory: $${SOURCE_DIR}"
+  echo "Run /opt/iceberg/generate-simulated-aws-iceberg-table.sh first, or set SOURCE_DIR to a local exported Iceberg table."
+  exit 1
+fi
+
+OCI_ARGS=(--auth "$${OCI_CLI_AUTH}")
+if [ -n "$${OCI_REGION}" ]; then
+  OCI_ARGS+=(--region "$${OCI_REGION}")
+fi
+
+oci "$${OCI_ARGS[@]}" os object bulk-delete \
+  --bucket-name "$${BUCKET}" \
+  --prefix "$${TABLE_PREFIX}/" \
+  --force || true
+
+oci "$${OCI_ARGS[@]}" os object sync \
+  --bucket-name "$${BUCKET}" \
+  --src-dir "$${SOURCE_DIR}" \
+  --prefix "$${TABLE_PREFIX}/"
+
+echo "Copied local Iceberg source into OCI Object Storage:"
+echo "Source directory: $${SOURCE_DIR}"
+echo "s3://$${BUCKET}/$${TABLE_PREFIX}/"
+EOF
+
+cat >/opt/iceberg/register-simulated-oci-table.sh <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+: "$${OCI_ACCESS_KEY_ID:?Set OCI_ACCESS_KEY_ID}"
+: "$${OCI_SECRET_ACCESS_KEY:?Set OCI_SECRET_ACCESS_KEY}"
+
+BUCKET="$${BUCKET:-iceberg-table-demo}"
+TABLE_PREFIX="$${TABLE_PREFIX:-lakehouse/sales/orders}"
+DATABASE="$${DATABASE:-sales}"
+TABLE="$${TABLE:-orders}"
+OCI_REGION="$${OCI_REGION:-${region}}"
+OCI_CLI_AUTH="$${OCI_CLI_AUTH:-instance_principal}"
+VALIDATION_ENGINES="$${VALIDATION_ENGINES:-${validation_engines}}"
+
+if [ -z "$${OCI_S3_ENDPOINT:-}" ]; then
+  OCI_NAMESPACE="$${OCI_NAMESPACE:-$(oci os ns get --auth instance_principal --query data --raw-output)}"
+  OCI_S3_ENDPOINT="https://$${OCI_NAMESPACE}.compat.objectstorage.$${OCI_REGION}.oci.customer-oci.com"
+fi
+
+OCI_ARGS=(--auth "$${OCI_CLI_AUTH}")
+if [ -n "$${OCI_REGION}" ]; then
+  OCI_ARGS+=(--region "$${OCI_REGION}")
+fi
+
+LATEST_METADATA="$(
+  oci "$${OCI_ARGS[@]}" os object list \
+    --bucket-name "$${BUCKET}" \
+    --prefix "$${TABLE_PREFIX}/metadata/" \
+    --fields name \
+    --all \
+    --query 'data[].name' \
+    --output json |
+    grep '\.metadata\.json' |
+    tr -d '", ' |
+    sed 's#^.*/##' |
+    grep '^[0-9][0-9]*-.*\.metadata\.json$' |
+    sort |
+    tail -n 1 || true
+)"
+
+if [ -z "$${LATEST_METADATA}" ]; then
+  echo "No Iceberg metadata JSON found under s3://$${BUCKET}/$${TABLE_PREFIX}/metadata/"
+  exit 1
+fi
+
+METADATA_FILE="s3://$${BUCKET}/$${TABLE_PREFIX}/metadata/$${LATEST_METADATA}"
+
+if [ "$${CLEAN_TARGET_CATALOG:-true}" = "true" ]; then
+  docker exec iceberg-hms-postgres psql -U hive -d metastore -v ON_ERROR_STOP=1 \
+    -c "DELETE FROM iceberg_tables WHERE catalog_name = 'oci' AND table_namespace = '$${DATABASE}' AND table_name = '$${TABLE}';" \
+    >/dev/null 2>&1 || true
+fi
+
+cat >/tmp/register-simulated-oci-table.sql <<SQL_EOF
+CREATE NAMESPACE IF NOT EXISTS oci.$${DATABASE};
+
+CALL oci.system.register_table(
+  table => '$${DATABASE}.$${TABLE}',
+  metadata_file => '$${METADATA_FILE}'
+);
+
+SHOW TABLES IN oci.$${DATABASE};
+DESCRIBE oci.$${DATABASE}.$${TABLE};
+SELECT COUNT(*) AS row_count FROM oci.$${DATABASE}.$${TABLE};
+SQL_EOF
+
+/opt/iceberg/spark-sql-oci.sh -f /tmp/register-simulated-oci-table.sql
+
+if [[ ",$${VALIDATION_ENGINES}," == *",trino,"* ]]; then
+  /opt/iceberg/validate-with-trino.sh
+fi
+
+echo "Registered table: oci.$${DATABASE}.$${TABLE}"
+echo "Metadata file: $${METADATA_FILE}"
+EOF
+
+cat >/opt/iceberg/validate-with-trino.sh <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+: "$${OCI_ACCESS_KEY_ID:?Set OCI_ACCESS_KEY_ID}"
+: "$${OCI_SECRET_ACCESS_KEY:?Set OCI_SECRET_ACCESS_KEY}"
+
+BUCKET="$${BUCKET:-iceberg-table-demo}"
+DATABASE="$${DATABASE:-sales}"
+TABLE="$${TABLE:-orders}"
+TRINO_IMAGE="$${TRINO_IMAGE:-trinodb/trino:latest}"
+TRINO_CONTAINER="$${TRINO_CONTAINER:-iceberg-trino}"
+JDBC_CATALOG_URI="$${JDBC_CATALOG_URI:-jdbc:postgresql://127.0.0.1:5432/metastore}"
+JDBC_CATALOG_USER="$${JDBC_CATALOG_USER:-hive}"
+JDBC_CATALOG_PASSWORD="$${JDBC_CATALOG_PASSWORD:-hive}"
+OCI_REGION="$${OCI_REGION:-${region}}"
+
+if [ -z "$${OCI_S3_ENDPOINT:-}" ]; then
+  OCI_NAMESPACE="$${OCI_NAMESPACE:-$(oci os ns get --auth instance_principal --query data --raw-output)}"
+  OCI_S3_ENDPOINT="https://$${OCI_NAMESPACE}.compat.objectstorage.$${OCI_REGION}.oci.customer-oci.com"
+fi
+
+mkdir -p /opt/iceberg/trino/catalog
+cat >/opt/iceberg/trino/catalog/iceberg.properties <<TRINO_CATALOG_EOF
+connector.name=iceberg
+iceberg.catalog.type=jdbc
+iceberg.jdbc-catalog.driver-class=org.postgresql.Driver
+iceberg.jdbc-catalog.connection-url=$${JDBC_CATALOG_URI}
+iceberg.jdbc-catalog.connection-user=$${JDBC_CATALOG_USER}
+iceberg.jdbc-catalog.connection-password=$${JDBC_CATALOG_PASSWORD}
+iceberg.jdbc-catalog.catalog-name=oci
+iceberg.jdbc-catalog.default-warehouse-dir=s3://$${BUCKET}/lakehouse
+iceberg.security=ALLOW_ALL
+fs.native-s3.enabled=true
+s3.endpoint=$${OCI_S3_ENDPOINT}
+s3.region=$${OCI_REGION}
+s3.path-style-access=true
+s3.aws-access-key=$${OCI_ACCESS_KEY_ID}
+s3.aws-secret-key=$${OCI_SECRET_ACCESS_KEY}
+TRINO_CATALOG_EOF
+
+docker rm -f "$${TRINO_CONTAINER}" >/dev/null 2>&1 || true
+docker run -d \
+  --name "$${TRINO_CONTAINER}" \
+  --network host \
+  -v /opt/iceberg/trino/catalog:/etc/trino/catalog:ro \
+  "$${TRINO_IMAGE}" >/dev/null
+
+until curl -sf http://127.0.0.1:8080/v1/info >/dev/null; do
+  echo "Waiting for Trino..."
+  sleep 2
+done
+
+until docker exec "$${TRINO_CONTAINER}" trino --execute "SELECT 1" >/dev/null 2>&1; do
+  echo "Waiting for Trino coordinator..."
+  sleep 3
+done
+
+docker exec "$${TRINO_CONTAINER}" trino --execute "
+SHOW TABLES FROM iceberg.$${DATABASE};
+DESCRIBE iceberg.$${DATABASE}.$${TABLE};
+SELECT COUNT(*) AS row_count FROM iceberg.$${DATABASE}.$${TABLE};
+"
+
+echo "Trino validated table: iceberg.$${DATABASE}.$${TABLE}"
+EOF
+
+chmod +x /opt/iceberg/generate-simulated-aws-iceberg-table.sh
+chmod +x /opt/iceberg/copy-simulated-source-to-oci.sh
+chmod +x /opt/iceberg/register-simulated-oci-table.sh
+chmod +x /opt/iceberg/validate-with-trino.sh
+chown -R opc:opc /opt/iceberg
