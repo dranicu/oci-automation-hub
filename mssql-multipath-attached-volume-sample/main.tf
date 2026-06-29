@@ -84,7 +84,7 @@ locals {
   instance_user_data = {
     for instance_key, params in local.normalized_instance_params :
     instance_key => params.os_type == "windows" ? templatefile(
-      local.windows_instance_attachment_type[instance_key] == "paravirtualized" ? "${path.module}/cloud-init/windows-mssql-paravirtualized-cloud-init.tftpl" : "${path.module}/cloud-init/windows-mssql-cloud-init.tftpl",
+      local.windows_instance_attachment_type[instance_key] == "paravirtualized" ? "${path.module}/cloud-init/windows-mssql-paravirtualized-cloud-init.ps1-cloud-init.tftpl" : "${path.module}/cloud-init/windows-mssql-cloud-init.ps1-cloud-init.tftpl",
       {
         windows_mssql_sa_password_b64  = base64encode(var.windows_mssql_sa_password)
         windows_sql_instance_name      = var.windows_sql_instance_name
@@ -96,7 +96,7 @@ locals {
         windows_volume_count           = length(local.instance_volume_runtime[instance_key])
         windows_volume_config_json_b64 = base64encode(jsonencode(local.instance_volume_runtime[instance_key]))
       }
-      ) : templatefile("${path.module}/cloud-init/linux-mssql-cloud-init.tftpl", {
+      ) : templatefile("${path.module}/cloud-init/linux-mssql-cloud-init.cloud-init.tftpl", {
         linux_timezone                 = var.linux_timezone
         linux_mssql_pid                = var.linux_mssql_pid
         linux_mssql_sa_password_b64    = base64encode(var.linux_mssql_sa_password)
