@@ -33,8 +33,8 @@ jobs:
           FAILED=0
 
           for FILE in $CHANGED_FILES; do
-            # Skip markdown and json files
-            if [[ "$FILE" == *.md ]] || [[ "$FILE" == *.json ]]; then
+            # Skip markdown, json and csv files
+            if [[ "$FILE" == *.md ]] || [[ "$FILE" == *.json ]] || [[ "$FILE" == *.csv ]]; then
               echo "Skipping: $FILE"
               continue
             fi
