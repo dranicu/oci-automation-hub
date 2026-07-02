@@ -1,3 +1,6 @@
+# Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
+# The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
+
 """Sales report Spark job for an OCI Big Data Service (Hadoop) cluster.
 
 Runs on YARN via spark-submit. Reads a sales CSV, computes revenue by region and

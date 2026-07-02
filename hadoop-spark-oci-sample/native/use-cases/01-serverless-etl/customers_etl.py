@@ -1,3 +1,6 @@
+# Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
+# The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
+
 """Serverless ETL showcase for OCI Data Flow.
 
 Reads a raw customers CSV from Object Storage, cleans and enriches it, and writes

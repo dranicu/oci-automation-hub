@@ -1,3 +1,6 @@
+# Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
+# The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
+
 """
 Object Storage + Spark demo: generate data, write it to an OCI Object Storage
 bucket over oci://, read it back, aggregate, and write the results back to the

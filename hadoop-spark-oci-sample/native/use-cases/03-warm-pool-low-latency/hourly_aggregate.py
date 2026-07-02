@@ -1,3 +1,6 @@
+# Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
+# The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
+
 """Hourly rollup job for OCI Data Flow, designed to be re-run frequently on a
 warm pool. Reads an event log CSV, aggregates per hour and event type, and writes
 a compact Parquet rollup the dashboard layer can read.

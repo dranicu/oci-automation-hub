@@ -1,4 +1,7 @@
 #!/bin/bash
+
+# Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
+# The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
 ###############################################################################
 # Kerberos KDC entrypoint (runs in the kdc StatefulSet pod).
 # Environment: REALM, KDC_DB_PASSWORD, KADMIN_PASSWORD, HADOOP_USER_PASSWORD
