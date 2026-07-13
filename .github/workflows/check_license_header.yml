@@ -53,7 +53,7 @@ jobs:
               *.html)
                 PREFIX="HTML"
                 ;;
-              *.js|*.css)
+              *.js|*.css|*.ts|*.tsx)
                 PREFIX="BLOCK"
                 ;;
               *.sql)
