@@ -43,14 +43,23 @@ This is a recreate configuration, not an import of the currently stopped VMs. If
 
 Terraform state, local variable files, plans, and the `.terraform` directory are local/generated artifacts. They are ignored by `.gitignore`; keep the active state file if Terraform still manages deployed resources.
 
-## Deploy
+## Deploy Locally
+
+Use this path only when the environment will be created and managed by Terraform on your workstation. Before continuing, install Terraform, configure an authorized OCI CLI profile in `~/.oci/config`, and select a Windows image OCID from the same OCI region as `region`.
+
+Local Terraform and OCI Resource Manager maintain separate state. Do not run a local `terraform apply` against resources created by a Resource Manager stack. For a separate local test, first destroy the Resource Manager stack or use a different compartment with unused CIDRs and static IPs.
 
 ```bash
-cd terraform-sanjose-aoag
+cd <cloned-repository-directory>
 cp terraform.tfvars.example terraform.tfvars
 
-# Edit terraform.tfvars and replace every REPLACE_ME value. Then choose one
-# credential method below. Do not use both methods for the same variable.
+# Review terraform.tfvars before applying. Replace every placeholder beginning
+# with REPLACE_, keep intentionally blank values blank unless their comments
+# say otherwise, and adjust example defaults such as CIDRs and sizing when
+# needed. Keep execution_environment = "local" and set oci_config_profile to a
+# profile that exists in ~/.oci/config. The region and windows_image_ocid must
+# match. Then choose one credential method below. Do not use both methods for
+# the same variable.
 
 # Option A: recommended for local deployment. Passwords are not written to
 # terraform.tfvars.
@@ -67,6 +76,8 @@ terraform plan
 terraform apply
 ```
 
+The generated `terraform.tfvars` and local Terraform state are sensitive and are intentionally ignored by Git. Keep them only on the workstation that manages this deployment.
+
 For a genuinely fresh lab test, destroy the previous stack first and then apply from this same directory:
 
 ```bash
@@ -81,6 +92,8 @@ Do not delete `terraform.tfstate` before `terraform destroy`; doing so would orp
 ## Deploy with OCI Resource Manager
 
 This configuration can run as an OCI Resource Manager stack instead of from a local workstation. Resource Manager supplies OCI authentication and manages the Terraform state, so do not configure an OCI CLI profile or run `terraform init` locally for this path.
+
+Resource Manager is an alternative deployment owner, not an extension of a local deployment. Do not switch between the two methods for the same resources unless the original owner has first destroyed its stack.
 
 1. In the OCI Console, go to **Developer Services** > **Resource Manager** > **Stacks** and create a stack from this Git repository or from a clean ZIP of this directory.
 2. Use this directory as the stack working directory. Do not include `.terraform`, any `terraform.tfstate*` file, `terraform.tfvars`, plans, or logs in the uploaded source.

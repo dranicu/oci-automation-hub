@@ -1,15 +1,25 @@
 # Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
 # The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
-# Copy this file to terraform.tfvars, then replace every REPLACE_ME value.
-# The values below are examples only; the module is not tied to San Jose.
+# This example is for a local Terraform CLI deployment. Copy it to the local,
+# Git-ignored terraform.tfvars file, then review every input before applying.
+# Replace every placeholder beginning with REPLACE_, keep intentionally blank
+# values blank unless their comments say otherwise, and adjust the example
+# defaults when they do not suit the target environment. The module is not
+# tied to San Jose.
+# Do not commit or upload a populated terraform.tfvars file.
+#
+# For OCI Resource Manager, leave this example in the source ZIP and set the
+# equivalent values in the Stack variables page instead of creating a local
+# terraform.tfvars file.
 
-# For a local CLI deployment use "local". For an OCI Resource Manager stack,
-# set this to "resource_manager" in the Stack variables page.
+# For a local CLI deployment use "local" and ensure oci_config_profile exists
+# in ~/.oci/config. For an OCI Resource Manager stack, set this to
+# "resource_manager" in the Stack variables page.
 execution_environment = "local"
 oci_config_profile    = "DEFAULT" # Used only when execution_environment = "local".
 region             = "REPLACE_WITH_OCI_REGION"
-compartment_id     = "ocid1.compartment.oc1..REPLACE_ME"
-windows_image_ocid = "ocid1.image.REPLACE_WITH_REGION.REPLACE_ME"
+compartment_id     = "REPLACE_WITH_COMPARTMENT_ID"
+windows_image_ocid = "REPLACE_WITH_IMAGE_OCID"
 
 # Leave these empty for automatic placement: DC/SQL1 use AD-1, and SQL2 uses
 # AD-2 when available; in one-AD regions all three use AD-1.

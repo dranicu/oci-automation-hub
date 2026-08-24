@@ -308,12 +308,21 @@ This is a single-primary AOAG design. Both replicas participate in availability,
 
 ## Deployment
 
+### Local Terraform CLI
+
+Use the local workflow only when the environment will be owned by Terraform on the workstation. Install Terraform, configure an authorized OCI CLI profile in `~/.oci/config`, and use a Windows image OCID from the same region specified by `region`. Keep `execution_environment = "local"` and set `oci_config_profile` to that local profile in `terraform.tfvars`.
+
+Local Terraform and OCI Resource Manager have separate state. Do not use a local `terraform apply` against a Resource Manager-created stack. Destroy the Resource Manager stack first, or deploy the local test into a different compartment with unused CIDRs and static IPs.
+
 ```bash
-cd terraform-sanjose-aoag
+cd <cloned-repository-directory>
 cp terraform.tfvars.example terraform.tfvars
 
-# Edit terraform.tfvars and replace every REPLACE_ME value. Choose one
-# credential method below; do not use both methods for the same variable.
+# Review terraform.tfvars before applying. Replace every placeholder beginning
+# with REPLACE_, keep intentionally blank values blank unless their comments
+# say otherwise, and adjust example defaults when required. Confirm that the
+# region and windows_image_ocid match, then choose one credential method below.
+# Do not use both methods for the same variable.
 
 # Option A: Prefer environment variables.
 export TF_VAR_domain_admin_password='<domain-admin-password>'
@@ -332,6 +341,8 @@ terraform apply
 ### OCI Resource Manager deployment
 
 The same Terraform can be deployed through an OCI Resource Manager stack. Create the stack from the Git repository or a clean ZIP of this directory, set `execution_environment = "resource_manager"`, and provide the target region, compartment, Windows image, network values, and passwords through the Stack variables page. Resource Manager supplies OCI authentication and manages state, so users do not run `terraform init` or set `TF_VAR_*` shell variables for this deployment path.
+
+Resource Manager is an alternative deployment owner, not an extension of a local deployment. Do not switch deployment methods for the same resources unless the original owner has destroyed its stack.
 
 Do not upload `.terraform`, `terraform.tfstate*`, `terraform.tfvars`, plans, or logs. Run a Resource Manager **Plan** job, then an **Apply** job after review; use a **Destroy** job for cleanup. The stack operator requires compartment permissions to manage networking, compute, block volumes, private IPs, and the Object Storage automation artifacts. Treat stack state and job logs as sensitive because the bootstrap uses account passwords.
 
