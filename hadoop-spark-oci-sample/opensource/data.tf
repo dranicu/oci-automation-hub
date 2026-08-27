@@ -1,6 +1,3 @@
-# Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
-# The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
-
 ###############################################################################
 # Data sources
 ###############################################################################
@@ -22,5 +19,16 @@ data "oci_core_services" "all_services" {
     name   = "name"
     values = ["All .* Services In Oracle Services Network"]
     regex  = true
+  }
+}
+
+# Kubernetes NetworkPolicy ipBlocks require numeric CIDRs; the value exposed by
+# oci_core_services is an OCI service CIDR label intended for route tables. OCI
+# publishes the numeric OSN ranges for each region in this canonical document.
+data "http" "oci_public_ip_ranges" {
+  url = "https://docs.oracle.com/en-us/iaas/tools/public_ip_ranges.json"
+
+  request_headers = {
+    Accept = "application/json"
   }
 }
