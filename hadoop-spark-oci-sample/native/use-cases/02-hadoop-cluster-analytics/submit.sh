@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 ###############################################################################
+# Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
+# The Universal Permissive License (UPL), Version 1.0 as shown at https://oss.oracle.com/licenses/upl/
 # Use case 02 — Hadoop cluster analytics. Run this ON the operator VM.
 #
 # spark-submit has to run ON a BDS node. This script runs on the operator, uses
